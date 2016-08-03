@@ -7,6 +7,7 @@ Special thanks to Paul Crook for the base of this code! You the man Crookie xx
 It will create a menu in the VBA IDE called 'Export for TFS' with the options 'Make File List', 'Import Files' and 'Export Files'
 
 The process to use this should be:
+
     1. Make a File List
       a. This will list all the object in the project
     2. Export the Files
