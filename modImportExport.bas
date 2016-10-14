@@ -1,15 +1,24 @@
 Attribute VB_Name = "modImportExport"
 Option Explicit
 
+Const strThisProjectName As String = "VBAExport"
+
+
 Public Sub MakeFileList()
     Dim prjActVBProject As VBProject
     Dim modFileList As VBComponent
     Dim comComponent As VBComponent
 
     On Error GoTo ErrHandler
+    
+    '// name this project if it has not been already
+    If ThisWorkbook.VBProject.Name <> strThisProjectName Then ThisWorkbook.VBProject.Name = strThisProjectName
 
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
     Set prjActVBProject = Application.VBE.ActiveVBProject
+    
+    '// Add logic sso that this project is not listed
+    If prjActVBProject.Name = strThisProjectName Then Exit Sub
 
     On Error Resume Next
     Set modFileList = prjActVBProject.VBComponents("modFileList")

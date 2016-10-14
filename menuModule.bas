@@ -1,16 +1,22 @@
 Attribute VB_Name = "menuModule"
 Option Explicit
 
+'// Add references for : Microsoft Visual Basic For Applications Extensibility 5.3
+'// Also check the Trust access to the VBA project model check box, located...
+'// Trust Centre, Trust Centre Settings, Macro Settings, Trust access to the VBA project model
+
 Dim MnuEvt As VBECmdHandler
 Dim EvtHandlers As New Collection
 
 Sub auto_open()
     Call CreateVBEMenu
     'Call CreateXLMenu
+    DetermineNonBuiltinCommandBars
 End Sub
 
 Sub auto_close()
     Call RemoveVBEMenu
+    DetermineNonBuiltinCommandBars
 End Sub
 
 Sub CreateVBEMenu()
@@ -75,4 +81,18 @@ Sub RemoveVBEMenu()
     Application.CommandBars("Worksheet Menu Bar").Controls("E&xport for TFS").Delete
     On Error GoTo 0
 
+End Sub
+
+
+Sub DetermineNonBuiltinCommandBars()
+    Dim cb As Office.CommandBar
+
+    For Each cb In CommandBars
+        If Not cb.BuiltIn Then
+            Debug.Print cb.Context & ", " & cb.Name
+            cb.Delete
+        Else
+            cb.Reset
+        End If
+    Next
 End Sub
