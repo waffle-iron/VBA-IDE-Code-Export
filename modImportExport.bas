@@ -19,26 +19,29 @@ Public Sub MakeFileList()
     
     '// Add logic sso that this project is not listed
     If prjActVBProject.Name = strThisProjectName Then Exit Sub
-
+    
+    '// determine if  the list needs to be in a module or txt file
+    
+    
     On Error Resume Next
     Set modFileList = prjActVBProject.VBComponents("modFileList")
     On Error GoTo ErrHandler
 
     If modFileList Is Nothing Then
-        'module does not already exist
+        '// module does not already exist
     Else
-        'module already exists, so first remove it
+        '// module already exists, so first remove it
         prjActVBProject.VBComponents.Remove modFileList
     End If
 
-    'Add module
+    '// Add module
     Set modFileList = prjActVBProject.VBComponents.Add(vbext_ct_StdModule)
     modFileList.Name = "modFileList"
 
     With modFileList.CodeModule
         .AddFromString ("'DO NOT DELETE THIS MODULE")
 
-        'For each module form etc, add the name to the modFileList Module
+        '// For each module form etc, add the name to the modFileList Module
         For Each comComponent In prjActVBProject.VBComponents
             Select Case comComponent.Type
             Case Is = vbext_ct_StdModule
@@ -77,19 +80,19 @@ Sub ImportFiles()
     strActVBProjectDir = Left(prjActVBProject.Filename, Len(prjActVBProject.Filename) - _
                                                         Len(Dir(prjActVBProject.Filename, vbNormal)))
 
-    'Check modFileList module exists
+    '// Check modFileList module exists
     On Error Resume Next
     Set modFileList = prjActVBProject.VBComponents("modFileList")
     On Error GoTo ErrHandler
 
-    'If modFileList module doesnt exist, you need to warn user then exit sub
+    '// If modFileList module doesnt exist, you need to warn user then exit sub
     If modFileList Is Nothing Then
         MsgBox "You need to create modFileList before you can import files!"
         Exit Sub
     End If
 
     With modFileList.CodeModule
-        'loop through each module name listed in modFileList and import the associated module
+        '// loop through each module name listed in modFileList and import the associated module
         For intModRowCounter = 1 To .CountOfDeclarationLines
             Select Case Left(.Lines(intModRowCounter, 1), InStr(.Lines(intModRowCounter, 1), ": "))
             Case Is = "'Module:"
@@ -129,19 +132,19 @@ Sub ExportFiles()
     strActVBProjectDir = Left(prjActVBProject.Filename, Len(prjActVBProject.Filename) - _
                                                         Len(Dir(prjActVBProject.Filename, vbNormal)))
 
-    'Check modFileList module exists
+    '// Check modFileList module exists
     On Error Resume Next
     Set modFileList = prjActVBProject.VBComponents("modFileList")
     On Error GoTo ErrHandler
 
-    'If modFileList module doesnt exist, you need to warn user then exit sub
+    '// If modFileList module doesnt exist, you need to warn user then exit sub
     If modFileList Is Nothing Then
         MsgBox "You need to create modFileList before you can export files!"
         Exit Sub
     End If
 
     With modFileList.CodeModule
-        'loop through each module name listed in modFileList and import the associated module
+        '// loop through each module name listed in modFileList and import the associated module
         For intModRowCounter = 1 To .CountOfDeclarationLines
             Select Case Left(.Lines(intModRowCounter, 1), InStr(.Lines(intModRowCounter, 1), ": "))
             Case Is = "'Module:"
@@ -170,4 +173,99 @@ ErrHandler:
     MsgBox "Error in Exporting Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.ExportFiles"
 End Sub
+
+Sub ConfigureExport()
+    frmConfigure.Show
+End Sub
+
+
+Function fFilePicker(strPickType As String, Optional strFileSpec As String, Optional strTitle As String, _
+    Optional strFilterString As String, Optional bolAllowMultiSelect As Boolean) As String
+
+    Dim fdiBox                      As FileDialog
+    Dim lngIdx                      As Long
+    Dim lngCount                    As Long
+    Dim varArrFilters()             As Variant
+    Dim varArrFilterElements()      As Variant
+    Dim strSiteName                 As String
+
+    On Error GoTo CatchError
+   
+    Select Case LCase(strPickType)
+        Case "file"
+            Set fdiBox = Application.FileDialog(msoFileDialogFilePicker)
+        Case "folder"
+            Set fdiBox = Application.FileDialog(msoFileDialogFolderPicker)
+    End Select
+    
+    With fdiBox
+        .InitialFileName = strFileSpec
+        .AllowMultiSelect = bolAllowMultiSelect
+        
+        If strTitle <> "" Then
+            .Title = strTitle
+        End If
+        
+        .Filters.Clear
+        
+        If strFilterString <> "" Then
+            varArrFilters = Split(strFilterString, "|")
+            
+            For lngIdx = LBound(varArrFilters) To UBound(varArrFilters)
+                varArrFilterElements = Split(varArrFilters(lngIdx), ",")
+                
+                .Filters.Add varArrFilterElements(0), "*." & varArrFilterElements(1)
+            Next
+        End If
+
+        If .Show = -1 Then
+
+            For lngIdx = 1 To .SelectedItems.Count
+                If lngIdx > 1 Then
+                    fFilePicker = fFilePicker & "|"
+                End If
+                    
+                fFilePicker = fFilePicker & fConvToUNC(CStr(.SelectedItems(lngIdx)))
+            Next
+        End If
+    End With
+    
+    'Set the object variable to Nothing.
+    Set fdiBox = Nothing
+
+ExitFunction:
+    Exit Function
+
+CatchError:
+    GoTo ExitFunction
+    
+End Function
+
+
+Function fConvToUNC(strPath As String) As String
+        
+    'converts a URL to a UNC path adding the @SSL where required
+    
+    If LCase(Left(strPath, 4)) = "http" Then
+    
+        If InStr(1, strPath, "https://") Then
+            strPath = Replace(strPath, "https://", "")
+            strPath = Replace(strPath, "/", "@SSL\", , 1)
+        ElseIf InStr(1, strPath, "https:\\") Then
+            strPath = Replace(strPath, "https:\\", "")
+            strPath = Replace(strPath, "\", "@SSL\", , 1)
+        ElseIf InStr(1, strPath, "http://") Then
+            strPath = Replace(strPath, "http://", "")
+        ElseIf InStr(1, strPath, "http:\\") Then
+            strPath = Replace(strPath, "http:\\", "")
+        End If
+        
+        strPath = "\\" & Replace(strPath, "/", "\")
+        '// SDS 18/05/2016 added to cater for spaces
+        strPath = Replace(strPath, "%20", " ")
+    End If
+    
+    fConvToUNC = strPath
+
+End Function
 
