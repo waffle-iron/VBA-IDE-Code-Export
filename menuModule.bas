@@ -41,6 +41,11 @@ Sub CreateVBEMenu()
         objMenuItem.OnAction = "ExportFiles"
         Call MenuEvents(objMenuItem)
         objMenuItem.Caption = "&Export Files"
+        
+        Set objMenuItem = .Controls.Add(Type:=msoControlButton)
+        objMenuItem.OnAction = "ConfigureExport"
+        Call MenuEvents(objMenuItem)
+        objMenuItem.Caption = "&Configure Export"
     End With
 
     Set objMenuItem = Nothing
@@ -62,6 +67,8 @@ Sub CreateXLMenu()
              OnAction:="ImportFiles"
         .Add Caption:="&Export Files", _
              OnAction:="ExportFiles"
+        .Add Caption:="&Configure Export", _
+             OnAction:="ConfigureExport"
     End With
 End Sub
 
