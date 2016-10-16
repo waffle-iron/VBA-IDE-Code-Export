@@ -17,24 +17,34 @@ Option Explicit
 
 Private Sub chkInternalComponents_Click()
     shtConfig.Range("rComponentTXTList") = chkInternalComponents.Value
+    blnMakeConfFile = True
 End Sub
 
 Private Sub cmdExportLocation_Click()
-    txtExportTo = fFilePicker("folder")
+    txtExportTo = fFilePicker("folder", , "please select export location.")
     shtConfig.Range("rExportTo") = txtExportTo
 End Sub
 
 Private Sub cmdImportLocation_Click()
-    txtImportFrom = fFilePicker("folder")
+    txtImportFrom = fFilePicker("folder", , "Please select import location.")
     shtConfig.Range("rImportFrom") = txtImportFrom
 End Sub
 
 '// on startup do an initial scan
 Private Sub UserForm_Initialize()
     
+    Dim FSO As New Scripting.FileSystemObject
+    
+    chkInternalComponents.Value = shtConfig.Range("rComponentTXTList")
+    
+    If blnConfigAvailable Then
+        txtExportTo = strExportTo
+        txtImportFrom = strImportFrom
+    Else
+        txtExportTo = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.FileName)
+        txtImportFrom = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.FileName)
+    End If
+    
+
 End Sub
-
-
-'rImportFrom
-'rExportTo
 
