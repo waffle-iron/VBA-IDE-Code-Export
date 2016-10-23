@@ -21,3 +21,10 @@ To build you will need an empty *.xlam [Microsoft add-in file] to add the 'modIm
 # Still to come
 The ability to specify file locations
 The option to check that the file being worked on is in source control and if it is read only or not
+
+
+# Contributing
+
+Please fork this repository and contribute back using pull requests.
+
+Any contributions, large or small, major features, bugfixes and integration tests are welcomed and appreciated but will be thoroughly reviewed and discussed.
