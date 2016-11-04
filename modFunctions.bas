@@ -1,6 +1,7 @@
 Attribute VB_Name = "modFunctions"
 Option Explicit
 
+
 Function fConfFileExists() As Boolean
 
     '// Determine if current location has a
@@ -24,16 +25,6 @@ Function fConfFileExists() As Boolean
         fConfFileExists = True
         GoTo ExitFunction
     End If
-    
-'    For Each File In FSO.GetFolder(strPath).Files
-'        If File.Name = strFile Then
-'            blnConfigAvailable = True
-'            shtConfig.Range("rComponentTXTList") = blnConfigAvailable
-'            strConfigFilePath = File.path
-'            fConfFileExists = True
-'            GoTo ExitFunction
-'        End If
-'    Next
         
     '// if not config
     blnConfigAvailable = False
@@ -47,17 +38,6 @@ CatchError:
 
 End Function
 
-'Function fUseTXTList() As Boolean
-'    fUseTXTList = blnConfigAvailable
-'End Function
-'
-'Function fExportLocation()
-'    fExportLocation = strExportTo
-'End Function
-'
-'Function fImportLocation()
-'    fImportLocation = strImportFrom
-'End Function
 
 Function fFilePicker(strPickType As String, Optional strFileSpec As String, Optional strTitle As String, _
     Optional strFilterString As String, Optional bolAllowMultiSelect As Boolean) As String
@@ -148,8 +128,6 @@ Function fConvToUNC(strPath As String) As String
     fConvToUNC = strPath
 
 End Function
-
-
 
 
 Function fComponentTypeToString(ComponentType As VBIDE.vbext_ComponentType) As String
