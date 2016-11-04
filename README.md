@@ -20,7 +20,7 @@ Additional functionality is there to configure a .conf file that will export the
 ## Build
 You will need to clone or download a zip of the project open an empty workbook in Excel then open the 'VBAIDECodeExport.xlam' add-in, you will be able to see the project from the VBA IDE [Alt+F11] pane of the new workbook you have just opened. The easiest way to do this is to drag and drop the components from file explorer to the VBA IDE
 
-GIF HERE
+![Import to IDE](https://raw.githubusercontent.com/spences10/VBA-IDE-Code-Export/master/screenshots/ImportFilesToVBAIDE.gif)
 
 Save and open again, the auto_open should take care of creating the VBA IDE menu options and you're good to go
 
