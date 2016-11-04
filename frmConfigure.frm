@@ -41,8 +41,8 @@ Private Sub UserForm_Initialize()
         txtExportTo = strExportTo
         txtImportFrom = strImportFrom
     Else
-        txtExportTo = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.FileName)
-        txtImportFrom = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.FileName)
+        txtExportTo = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename)
+        txtImportFrom = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename)
     End If
     
 

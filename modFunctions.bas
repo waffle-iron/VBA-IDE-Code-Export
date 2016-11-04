@@ -1,7 +1,7 @@
 Attribute VB_Name = "modFunctions"
 Option Explicit
 
-Function ConfFileExists() As Boolean
+Function fConfFileExists() As Boolean
 
     '// Determine if current location has a
     '// project file saved in it looking for the
@@ -15,21 +15,29 @@ Function ConfFileExists() As Boolean
     
     strFile = strConfigFileName
 
-    strPath = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.FileName)
+    strPath = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename)
     
-    For Each File In FSO.GetFolder(strPath).Files
-        If File.Name = strFile Then
-            blnConfigAvailable = True
-            shtConfig.Range("rComponentTXTList") = blnConfigAvailable
-            strConfigFilePath = File.path
-            ConfFileExists = True
-            GoTo ExitFunction
-        End If
-    Next
+    If FSO.FileExists(strPath & Application.PathSeparator & strFile) Then
+        blnConfigAvailable = True
+        shtConfig.Range("rComponentTXTList") = blnConfigAvailable
+        strConfigFilePath = strPath & Application.PathSeparator & strFile
+        fConfFileExists = True
+        GoTo ExitFunction
+    End If
+    
+'    For Each File In FSO.GetFolder(strPath).Files
+'        If File.Name = strFile Then
+'            blnConfigAvailable = True
+'            shtConfig.Range("rComponentTXTList") = blnConfigAvailable
+'            strConfigFilePath = File.path
+'            fConfFileExists = True
+'            GoTo ExitFunction
+'        End If
+'    Next
         
     '// if not config
     blnConfigAvailable = False
-    ConfFileExists = False
+    fConfFileExists = False
     
 ExitFunction:
     Exit Function
@@ -142,3 +150,78 @@ Function fConvToUNC(strPath As String) As String
 End Function
 
 
+
+
+Function fComponentTypeToString(ComponentType As VBIDE.vbext_ComponentType) As String
+    Select Case ComponentType
+        Case vbext_ct_ActiveXDesigner
+            fComponentTypeToString = "ActiveX Designer"
+        Case vbext_ct_ClassModule
+            fComponentTypeToString = "Class Module"
+        Case vbext_ct_Document
+            fComponentTypeToString = "Document Module"
+        Case vbext_ct_MSForm
+            fComponentTypeToString = "UserForm"
+        Case vbext_ct_StdModule
+            fComponentTypeToString = "Code Module"
+        Case Else
+            fComponentTypeToString = "Unknown Type: " & CStr(ComponentType)
+    End Select
+End Function
+
+
+
+Sub test()
+    
+    Dim prjActVBProject     As VBProject
+    Dim modFileList         As VBComponent
+    Dim comComponent        As VBComponent
+    
+    Set prjActVBProject = Application.VBE.ActiveVBProject
+
+    For Each comComponent In prjActVBProject.VBComponents
+        Debug.Print fComponentTypeToString(comComponent.Type)
+    Next
+
+End Sub
+
+
+Sub fSearchCodeModule(strComponentName As String, strFindWhat As String)
+    
+    '// used to search for Workbook_ or Worksheet_
+    '// to help determine what to do with the code
+    
+    Dim VBProj As VBIDE.VBProject
+    Dim VBComp As VBIDE.VBComponent
+    Dim CodeMod As VBIDE.CodeModule
+    Dim FindWhat As String
+    Dim SL As Long ' start line
+    Dim EL As Long ' end line
+    Dim SC As Long ' start column
+    Dim EC As Long ' end column
+    Dim Found As Boolean
+    
+    Set VBProj = ActiveWorkbook.VBProject
+    Set VBComp = VBProj.VBComponents(strComponentName)
+    Set CodeMod = VBComp.CodeModule
+    
+    With CodeMod
+        SL = 1
+        EL = .CountOfLines
+        SC = 1
+        EC = 255
+        Found = .Find(Target:=FindWhat, StartLine:=SL, StartColumn:=SC, _
+            EndLine:=EL, EndColumn:=EC, _
+            wholeword:=True, MatchCase:=False, patternsearch:=False)
+        Do Until Found = False
+            Debug.Print "Found at: Line: " & CStr(SL) & " Column: " & CStr(SC)
+            EL = .CountOfLines
+            SC = EC + 1
+            EC = 255
+            Found = .Find(Target:=FindWhat, StartLine:=SL, StartColumn:=SC, _
+                EndLine:=EL, EndColumn:=EC, _
+                wholeword:=True, MatchCase:=False, patternsearch:=False)
+        Loop
+    End With
+End Sub
+    

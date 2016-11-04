@@ -10,6 +10,7 @@ Public Sub MakeFileList()
     Dim prjActVBProject     As VBProject
     Dim modFileList         As VBComponent
     Dim comComponent        As VBComponent
+    Dim fsoFile             As Object
 
     On Error GoTo CatchError
     
@@ -24,7 +25,31 @@ Public Sub MakeFileList()
     
     '// determine if  the list needs to be in a module or txt file
     If blnMakeConfFile Then
-        MsgBox ""
+        '// write out to conf file
+        Dim FSO As New Scripting.FileSystemObject
+        '// delete the file if it exists
+        With FSO
+            If .FileExists(strConfigFilePath) Then
+                .DeleteFile strConfigFilePath
+            End If
+        End With
+        '// create the file
+        Set fsoFile = FSO.CreateTextFile(FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename) & Application.PathSeparator & strConfigFileName)
+        
+        '// For each module form etc, add the name to the modFileList Module
+        For Each comComponent In prjActVBProject.VBComponents
+            Select Case comComponent.Type
+                Case Is = vbext_ct_StdModule
+                     fsoFile.WriteLine fComponentTypeToString(vbext_ct_StdModule) & ": " & comComponent.Name
+                Case Is = vbext_ct_ClassModule
+                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_ClassModule) & ": " & comComponent.Name
+                Case Is = vbext_ct_MSForm
+                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_MSForm) & ": " & comComponent.Name
+                Case Is = vbext_ct_ActiveXDesigner
+                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_ActiveXDesigner) & ": " & comComponent.Name
+            End Select
+        Next
+        
     Else '// add details to module modFileList
         On Error Resume Next
         Set modFileList = prjActVBProject.VBComponents("modFileList")
@@ -85,8 +110,8 @@ Sub ImportFiles()
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
     Set prjActVBProject = Application.VBE.ActiveVBProject
 
-    strActVBProjectDir = Left(prjActVBProject.FileName, Len(prjActVBProject.FileName) - _
-                                                        Len(Dir(prjActVBProject.FileName, vbNormal)))
+    strActVBProjectDir = Left(prjActVBProject.Filename, Len(prjActVBProject.Filename) - _
+                                                        Len(Dir(prjActVBProject.Filename, vbNormal)))
 
     '// Check modFileList module exists
     On Error Resume Next
@@ -137,8 +162,8 @@ Sub ExportFiles()
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
     Set prjActVBProject = Application.VBE.ActiveVBProject
 
-    strActVBProjectDir = Left(prjActVBProject.FileName, Len(prjActVBProject.FileName) - _
-                                                        Len(Dir(prjActVBProject.FileName, vbNormal)))
+    strActVBProjectDir = Left(prjActVBProject.Filename, Len(prjActVBProject.Filename) - _
+                                                        Len(Dir(prjActVBProject.Filename, vbNormal)))
 
     '// Check modFileList module exists
     On Error Resume Next

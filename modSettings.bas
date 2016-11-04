@@ -19,7 +19,7 @@ Sub CollectSettings()
     '// the .conf file exists
     
     '// first check for the config file
-    If ConfFileExists Then
+    If fConfFileExists Then
         '// populate global vars
         Dim tsFile      As Scripting.TextStream
         Dim strFileName As String
@@ -45,12 +45,12 @@ Sub CollectSettings()
         Loop
         tsFile.Close
         
-        blnMakeConfFile = shtConfig.Range("rComponentTXTList")
-        
     Else '// default settings
-        strExportTo = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.FileName)
-        strImportFrom = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.FileName)
+        strExportTo = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename)
+        strImportFrom = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename)
     End If
+    
+    blnMakeConfFile = shtConfig.Range("rComponentTXTList")
 
 End Sub
 
