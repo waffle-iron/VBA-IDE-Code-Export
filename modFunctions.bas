@@ -20,8 +20,8 @@ Function fConfFileExists() As Boolean
     strPath = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
     
     If FSO.FileExists(strPath & strFile) Then
-        g_blnConfigAvailable = True
-        shtConfig.Range("rComponentTXTList") = g_blnConfigAvailable
+'        g_blnConfigAvailable = True
+'        shtConfig.Range("rComponentTXTList") = g_blnConfigAvailable
         g_strConfigFilePath = strPath & strFile
         fConfFileExists = True
         GoTo ExitFunction

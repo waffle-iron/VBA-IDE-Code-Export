@@ -18,6 +18,7 @@ Private Sub EvtHandler_Click(ByVal CommandBarControl As Object, Handled As Boole
     On Error Resume Next
 
     '// Run the code specified in the object's OnAction property.
+    Call CollectSettings
     Application.Run CommandBarControl.OnAction
 
     '// Indicate to the Events object that we've successfully handled the event.

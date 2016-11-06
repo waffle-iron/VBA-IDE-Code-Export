@@ -17,7 +17,7 @@ Option Explicit
 
 Private Sub chkInternalComponents_Click()
     shtConfig.Range("rComponentTXTList") = chkInternalComponents.Value
-    g_blnMakeConfFile = True
+    g_blnMakeConfFile = chkInternalComponents.Value
 End Sub
 
 Private Sub cmdExportLocation_Click()
@@ -71,5 +71,7 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
         '// if g_strExportTo and g_strImportFrom are not same as ThisWorkbook then
         
     End If
+    
+    g_blnMakeConfFile = shtConfig.Range("rComponentTXTList")
     
 End Sub
