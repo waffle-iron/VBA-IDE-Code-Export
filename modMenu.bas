@@ -15,7 +15,7 @@ Sub auto_open()
     Call CreateVBEMenu
     'Call CreateXLMenu
     DetermineNonBuiltinCommandBars
-    CollectSettings
+    Call CollectSettings
 End Sub
 
 Sub auto_close()

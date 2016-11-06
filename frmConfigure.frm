@@ -17,16 +17,16 @@ Option Explicit
 
 Private Sub chkInternalComponents_Click()
     shtConfig.Range("rComponentTXTList") = chkInternalComponents.Value
-    blnMakeConfFile = True
+    g_blnMakeConfFile = True
 End Sub
 
 Private Sub cmdExportLocation_Click()
-    txtExportTo = fFilePicker("folder", , "please select export location.")
+    txtExportTo = fAddPathSeparator(fFilePicker("folder", , "please select export location."))
     shtConfig.Range("rExportTo") = txtExportTo
 End Sub
 
 Private Sub cmdImportLocation_Click()
-    txtImportFrom = fFilePicker("folder", , "Please select import location.")
+    txtImportFrom = fAddPathSeparator(fFilePicker("folder", , "Please select import location."))
     shtConfig.Range("rImportFrom") = txtImportFrom
 End Sub
 
@@ -36,15 +36,40 @@ Private Sub UserForm_Initialize()
     Dim FSO As New Scripting.FileSystemObject
     
     chkInternalComponents.Value = shtConfig.Range("rComponentTXTList")
-    
-    If blnConfigAvailable Then
-        txtExportTo = strExportTo
-        txtImportFrom = strImportFrom
+  
+    If g_blnConfigAvailable Then
+        txtExportTo = g_strExportTo
+        txtImportFrom = g_strImportFrom
     Else
-        txtExportTo = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename)
-        txtImportFrom = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename)
+        txtExportTo = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
+        txtImportFrom = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
     End If
     
-
 End Sub
 
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    
+    Dim FSO     As New Scripting.FileSystemObject
+    Dim fsoFile As Scripting.TextStream
+    
+    '// if .conf available then write g_strExportTo, g_strImportFrom
+    If Not fConfFileExists And g_blnMakeConfFile Then
+        
+        '// create the file
+        Set fsoFile = FSO.CreateTextFile(fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName)) & STRCONFIGFILENAME)
+        
+        '// Add import and export locations
+        fsoFile.WriteLine "ImportFrom:" & shtConfig.Range("rImportFrom")
+        fsoFile.WriteLine "ExportTo:" & shtConfig.Range("rExportTo")
+        
+    ElseIf fConfFileExists And g_blnMakeConfFile Then
+        
+        Call UpdateFile(g_strConfigFilePath, g_strImportFrom, txtImportFrom)
+        Call UpdateFile(g_strConfigFilePath, g_strExportTo, txtExportTo)
+    
+    Else
+        '// if g_strExportTo and g_strImportFrom are not same as ThisWorkbook then
+        
+    End If
+    
+End Sub

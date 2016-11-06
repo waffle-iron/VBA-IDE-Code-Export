@@ -6,28 +6,29 @@ Function fConfFileExists() As Boolean
 
     '// Determine if current location has a
     '// project file saved in it looking for the
-    '// FileList.conf file in the ThisWorkbook location
+    '// .conf file in the ThisWorkbook location
     '// pre populate rExportTo and rImportFrom if found
 
     Dim FSO     As New Scripting.FileSystemObject
-    Dim File    As Scripting.File
+    Dim file    As Scripting.file
     Dim strPath As String
     Dim strFile As String
     
-    strFile = strConfigFileName
-
-    strPath = FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename)
+    strFile = STRCONFIGFILENAME
     
-    If FSO.FileExists(strPath & Application.PathSeparator & strFile) Then
-        blnConfigAvailable = True
-        shtConfig.Range("rComponentTXTList") = blnConfigAvailable
-        strConfigFilePath = strPath & Application.PathSeparator & strFile
+    '// check to see if the config file is at the root of the project
+    strPath = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
+    
+    If FSO.FileExists(strPath & strFile) Then
+        g_blnConfigAvailable = True
+        shtConfig.Range("rComponentTXTList") = g_blnConfigAvailable
+        g_strConfigFilePath = strPath & strFile
         fConfFileExists = True
         GoTo ExitFunction
     End If
         
     '// if not config
-    blnConfigAvailable = False
+    g_blnConfigAvailable = False
     fConfFileExists = False
     
 ExitFunction:
@@ -148,22 +149,6 @@ Function fComponentTypeToString(ComponentType As VBIDE.vbext_ComponentType) As S
 End Function
 
 
-
-Sub test()
-    
-    Dim prjActVBProject     As VBProject
-    Dim modFileList         As VBComponent
-    Dim comComponent        As VBComponent
-    
-    Set prjActVBProject = Application.VBE.ActiveVBProject
-
-    For Each comComponent In prjActVBProject.VBComponents
-        Debug.Print fComponentTypeToString(comComponent.Type)
-    Next
-
-End Sub
-
-
 Sub fSearchCodeModule(strComponentName As String, strFindWhat As String)
     
     '// used to search for Workbook_ or Worksheet_
@@ -202,4 +187,29 @@ Sub fSearchCodeModule(strComponentName As String, strFindWhat As String)
         Loop
     End With
 End Sub
+
+
+Function fFSOTextStream(FSO As Scripting.FileSystemObject) As Scripting.TextStream
+
+    '// create the file
+    Set fFSOTextStream = FSO.CreateTextFile(FSO.GetParentFolderName(g_ActiveVBProjectName) & Application.PathSeparator & STRCONFIGFILENAME)
+    
+    '// open the .conf file
+    Set fFSOTextStream = FSO.OpenTextFile(g_strConfigFilePath, ForReading)
+
+End Function
+
+
+Function fAddPathSeparator(strPath As String)
+    
+    If Not Right(strPath, 1) = Application.PathSeparator Then
+        strPath = strPath & Application.PathSeparator
+        fAddPathSeparator = strPath
+    End If
+    
+End Function
+
+
+
+
     

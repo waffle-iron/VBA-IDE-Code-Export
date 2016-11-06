@@ -1,6 +1,12 @@
 Attribute VB_Name = "modImportExport"
 Option Explicit
 
+'// Worksheet named ranges
+'// rImportFrom
+'// rExportTo
+'// rComponentTXTList
+'// rConfFileName
+
 '// if config file is available and ListConf is checked
 '// then make file list, import and export from file
 '// else make file list, import and export from module
@@ -15,29 +21,31 @@ Public Sub MakeFileList()
     
     On Error GoTo CatchError
     
-    Call CollectSettings
-    
     '// name this project if it has not been already
-    If ThisWorkbook.VBProject.Name <> strThisProjectName Then ThisWorkbook.VBProject.Name = strThisProjectName
+    If ThisWorkbook.VBProject.Name <> STRTHISPROJECTNAME Then ThisWorkbook.VBProject.Name = STRTHISPROJECTNAME
 
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
     Set prjActVBProject = Application.VBE.ActiveVBProject
     
     '// Add logic sso that this project is not listed
-    If prjActVBProject.Name = strThisProjectName Then Exit Sub
+    If prjActVBProject.Name = STRTHISPROJECTNAME Then Exit Sub
     
     '// determine if  the list needs to be in a module or txt file
-    If blnMakeConfFile Then
+    If g_blnMakeConfFile Then
         '// write out to conf file
         
         '// delete the file if it exists
         With FSO
-            If .FileExists(strConfigFilePath) Then
-                .DeleteFile strConfigFilePath
+            If .FileExists(g_strConfigFilePath) Then
+                .DeleteFile g_strConfigFilePath
             End If
         End With
         '// create the file
-        Set fsoFile = FSO.CreateTextFile(FSO.GetParentFolderName(Application.VBE.ActiveVBProject.Filename) & Application.PathSeparator & strConfigFileName)
+        Set fsoFile = FSO.CreateTextFile(FSO.GetParentFolderName(g_ActiveVBProjectName) & Application.PathSeparator & STRCONFIGFILENAME)
+        
+        '// Add import and export locations
+        fsoFile.WriteLine "ImportFrom:" & shtConfig.Range("rImportFrom")
+        fsoFile.WriteLine "ExportTo:" & shtConfig.Range("rExportTo")
         
         '// For each module form etc, add the name to the modFileList Module
         For Each comComponent In prjActVBProject.VBComponents
@@ -99,44 +107,43 @@ ExitSub:
 CatchError:
     MsgBox "Error building file list" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.MakeFileList"
+    
+    '// reset the ide menu
+    Call auto_close
+    Call auto_open
+    
     GoTo ExitSub
 
 End Sub
 
 
 Sub ImportFiles()
+
     Dim prjActVBProject     As VBProject
     Dim modFileList         As VBComponent
     Dim strModuleName       As String
-    Dim strActVBProjectDir  As String
     Dim intModRowCounter    As Integer
     Dim FSO                 As New Scripting.FileSystemObject
     Dim fsoFile             As Scripting.TextStream
     Dim strLine             As String
 
     On Error GoTo ErrHandler
-    
-    Call CollectSettings
 
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
     Set prjActVBProject = Application.VBE.ActiveVBProject
     
-    '// TODO set to the global var for the project
-    strActVBProjectDir = Left(prjActVBProject.Filename, Len(prjActVBProject.Filename) - _
-                                                        Len(Dir(prjActVBProject.Filename, vbNormal)))
-    
-        '// determine if  the list needs to be in a module or txt file
-    If blnMakeConfFile Then
+    '// determine if  the list needs to be in a module or txt file
+    If g_blnMakeConfFile Then
         '// check that .conf file exists
         With FSO
-            If Not .FileExists(strConfigFilePath) Then
+            If Not .FileExists(g_strConfigFilePath) Then
                 MsgBox "You need to create modFileList before you can import files!"
                 Exit Sub
             End If
         End With
         
         '// open the .conf file
-        Set fsoFile = FSO.OpenTextFile(strConfigFilePath, ForReading)
+        Set fsoFile = FSO.OpenTextFile(g_strConfigFilePath, ForReading)
         
         '// loop through each object listed in the .conf file and export with file extension
         Do Until fsoFile.AtEndOfStream
@@ -147,13 +154,13 @@ Sub ImportFiles()
                     '// TODO identify ThisWorkbook and Worksheet before exporting
                 Case Is = "Code Module:"
                     strModuleName = Right(strLine, Len(strLine) - 13)
-                    prjActVBProject.VBComponents.Import (strActVBProjectDir & strModuleName & ".bas")
+                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".bas")
                 Case Is = "Class Module:"
                     strModuleName = Right(strLine, Len(strLine) - 14)
-                    prjActVBProject.VBComponents.Import (strActVBProjectDir & strModuleName & ".cls")
+                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".cls")
                 Case Is = "UserForm:"
                     strModuleName = Right(strLine, Len(strLine) - 10)
-                    prjActVBProject.VBComponents.Import (strActVBProjectDir & strModuleName & ".frm")
+                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".frm")
             End Select
             
         Loop
@@ -176,13 +183,13 @@ Sub ImportFiles()
                 Select Case Left(.Lines(intModRowCounter, 1), InStr(.Lines(intModRowCounter, 1), ": "))
                 Case Is = "'Module:"
                     strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 9)
-                    prjActVBProject.VBComponents.Import (strActVBProjectDir & strModuleName & ".bas")
+                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".bas")
                 Case Is = "'Class:"
                     strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 8)
-                    prjActVBProject.VBComponents.Import (strActVBProjectDir & strModuleName & ".cls")
+                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".cls")
                 Case Is = "'Form:"
                     strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 7)
-                    prjActVBProject.VBComponents.Import (strActVBProjectDir & strModuleName & ".frm")
+                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".frm")
                 End Select
             Next intModRowCounter
         End With
@@ -190,11 +197,18 @@ Sub ImportFiles()
     
     MsgBox "Finished building " & prjActVBProject.Name
 
+ExitSub:
     Exit Sub
 
 ErrHandler:
     MsgBox "Error in Importing Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.ImportFiles"
+    
+    Call auto_close
+    Call auto_open
+    
+    GoTo ExitSub
+
 End Sub
 
 
@@ -203,35 +217,29 @@ Sub ExportFiles()
     Dim prjActVBProject     As VBProject
     Dim modFileList         As VBComponent
     Dim strModuleName       As String
-    Dim strActVBProjectDir  As String
     Dim intModRowCounter    As Integer
     Dim FSO                 As New Scripting.FileSystemObject
     Dim fsoFile             As Scripting.TextStream
     Dim strLine             As String
+    Dim strDocType          As String
     
     On Error GoTo ErrHandler
-    
-    Call CollectSettings
         
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
     Set prjActVBProject = Application.VBE.ActiveVBProject
-
-    '// TODO set to the global var for the project
-    strActVBProjectDir = Left(prjActVBProject.Filename, Len(prjActVBProject.Filename) - _
-                                                        Len(Dir(prjActVBProject.Filename, vbNormal)))
     
     '// determine if  the list needs to be in a module or txt file
-    If blnMakeConfFile Then
+    If g_blnMakeConfFile Then
         '// check that .conf file exists
         With FSO
-            If Not .FileExists(strConfigFilePath) Then
+            If Not .FileExists(g_strConfigFilePath) Then
                 MsgBox "You need to create modFileList before you can export files!"
                 Exit Sub
             End If
         End With
         
         '// open the .conf file
-        Set fsoFile = FSO.OpenTextFile(strConfigFilePath, ForReading)
+        Set fsoFile = FSO.OpenTextFile(g_strConfigFilePath, ForReading)
         
         '// loop through each object listed in the .conf file and export with file extension
         Do Until fsoFile.AtEndOfStream
@@ -239,18 +247,26 @@ Sub ExportFiles()
             
             Select Case Left(strLine, InStr(strLine, ": "))
                 Case Is = "Document Module:"
-                    '// TODO identify ThisWorkbook and Worksheet before exporting
+                    strModuleName = Right(strLine, Len(strLine) - 17)
+                    '// this is taken from workbook and worksheet
+                    Select Case prjActVBProject.VBComponents(strModuleName).Properties(4).Name
+                        Case Is = "AcceptLabelsInFormulas" '// Workbook
+                            strDocType = ".wbk"
+                        Case Is = "CodeName" '// Worksheet
+                            strDocType = ".sht"
+                    End Select
+                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & strDocType)
                 Case Is = "Code Module:"
                     strModuleName = Right(strLine, Len(strLine) - 13)
-                    prjActVBProject.VBComponents(strModuleName).Export (strActVBProjectDir & strModuleName & ".bas")
+                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".bas")
                     prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
                 Case Is = "Class Module:"
                     strModuleName = Right(strLine, Len(strLine) - 14)
-                    prjActVBProject.VBComponents(strModuleName).Export (strActVBProjectDir & strModuleName & ".cls")
+                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".cls")
                     prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
                 Case Is = "UserForm:"
                     strModuleName = Right(strLine, Len(strLine) - 10)
-                    prjActVBProject.VBComponents(strModuleName).Export (strActVBProjectDir & strModuleName & ".frm")
+                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".frm")
                     prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
             End Select
             
@@ -275,17 +291,17 @@ Sub ExportFiles()
                 Select Case Left(.Lines(intModRowCounter, 1), InStr(.Lines(intModRowCounter, 1), ": "))
                 Case Is = "'Module:"
                     strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 9)
-                    prjActVBProject.VBComponents(strModuleName).Export (strActVBProjectDir & strModuleName & ".bas")
+                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".bas")
                     If UCase(strModuleName) <> UCase("modFileList") Then
                         prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
                     End If
                 Case Is = "'Class:"
                     strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 8)
-                    prjActVBProject.VBComponents(strModuleName).Export (strActVBProjectDir & strModuleName & ".cls")
+                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".cls")
                     prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
                 Case Is = "'Form:"
                     strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 7)
-                    prjActVBProject.VBComponents(strModuleName).Export (strActVBProjectDir & strModuleName & ".frm")
+                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".frm")
                     prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
                 End Select
             Next intModRowCounter
@@ -294,13 +310,21 @@ Sub ExportFiles()
     End If
     
     MsgBox "Finished exporting " & prjActVBProject.Name
-    
+
+ExitSub:
     Exit Sub
 
 ErrHandler:
     MsgBox "Error in Exporting Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.ExportFiles"
+    
+    Call auto_close
+    Call auto_open
+    
+    GoTo ExitSub
+    
 End Sub
+
 
 Sub ConfigureExport()
     frmConfigure.Show
