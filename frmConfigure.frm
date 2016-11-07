@@ -41,8 +41,8 @@ Private Sub UserForm_Initialize()
         txtExportTo = g_strExportTo
         txtImportFrom = g_strImportFrom
     Else
-        txtExportTo = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
-        txtImportFrom = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
+        txtExportTo = fAddPathSeparator(FSO.GetParentFolderName(g_strActiveVBProjectName))
+        txtImportFrom = fAddPathSeparator(FSO.GetParentFolderName(g_strActiveVBProjectName))
     End If
     
 End Sub
@@ -56,7 +56,7 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
     If Not fConfFileExists And g_blnMakeConfFile Then
         
         '// create the file
-        Set fsoFile = FSO.CreateTextFile(fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName)) & STRCONFIGFILENAME)
+        Set fsoFile = FSO.CreateTextFile(fAddPathSeparator(FSO.GetParentFolderName(g_strActiveVBProjectName)) & STRCONFIGFILENAME)
         
         '// Add import and export locations
         fsoFile.WriteLine "ImportFrom:" & shtConfig.Range("rImportFrom")

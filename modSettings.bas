@@ -1,17 +1,19 @@
 Attribute VB_Name = "modSettings"
 Option Explicit
 
-Public Const STRTHISPROJECTNAME As String = "VBAExport"
-Public Const STRCONFIGFILENAME  As String = "CodeExportFileList.conf"
+Public Const STRTHISPROJECTNAME     As String = "VBAExport"
+Public Const STRCONFIGFILENAME      As String = "CodeExportFileList.conf"
 Public Const ForReading = 1, ForWriting = 2, ForAppending = 8
 
-Public g_blnConfigAvailable     As Boolean
-Public g_blnMakeConfFile        As Boolean
+Public g_blnConfigAvailable         As Boolean
+Public g_blnMakeConfFile            As Boolean
+Public g_blnBuildFileListOnExport   As Boolean
 
-Public g_strExportTo            As String
-Public g_strImportFrom          As String
-Public g_strConfigFilePath      As String
-Public g_ActiveVBProjectName    As String
+Public g_strExportTo                As String
+Public g_strImportFrom              As String
+Public g_strConfigFilePath          As String
+Public g_strActiveVBProjectName     As String
+
 
 Sub CollectSettings()
         
@@ -19,7 +21,7 @@ Sub CollectSettings()
     '// vars with the configured file locations if
     '// the .conf file exists
     
-     g_ActiveVBProjectName = Application.VBE.ActiveVBProject.Filename
+     g_strActiveVBProjectName = Application.VBE.ActiveVBProject.Filename
     
     '// first check for the config file
     If fConfFileExists Then
@@ -47,8 +49,8 @@ Sub CollectSettings()
         tsFile.Close
         
     Else '// default settings
-        g_strExportTo = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
-        g_strImportFrom = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
+        g_strExportTo = fAddPathSeparator(FSO.GetParentFolderName(g_strActiveVBProjectName))
+        g_strImportFrom = fAddPathSeparator(FSO.GetParentFolderName(g_strActiveVBProjectName))
     End If
     
     g_blnMakeConfFile = shtConfig.Range("rComponentTXTList")

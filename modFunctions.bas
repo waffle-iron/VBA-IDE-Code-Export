@@ -17,7 +17,7 @@ Function fConfFileExists() As Boolean
     strFile = STRCONFIGFILENAME
     
     '// check to see if the config file is at the root of the project
-    strPath = fAddPathSeparator(FSO.GetParentFolderName(g_ActiveVBProjectName))
+    strPath = fAddPathSeparator(FSO.GetParentFolderName(g_strActiveVBProjectName))
     
     If FSO.FileExists(strPath & strFile) Then
 '        g_blnConfigAvailable = True
@@ -192,7 +192,7 @@ End Sub
 Function fFSOTextStream(FSO As Scripting.FileSystemObject) As Scripting.TextStream
 
     '// create the file
-    Set fFSOTextStream = FSO.CreateTextFile(FSO.GetParentFolderName(g_ActiveVBProjectName) & Application.PathSeparator & STRCONFIGFILENAME)
+    Set fFSOTextStream = FSO.CreateTextFile(FSO.GetParentFolderName(g_strActiveVBProjectName) & Application.PathSeparator & STRCONFIGFILENAME)
     
     '// open the .conf file
     Set fFSOTextStream = FSO.OpenTextFile(g_strConfigFilePath, ForReading)
