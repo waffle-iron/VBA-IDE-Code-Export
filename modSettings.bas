@@ -20,8 +20,10 @@ Sub CollectSettings()
     '// so this will populate the global
     '// vars with the configured file locations if
     '// the .conf file exists
-    
-     g_strActiveVBProjectName = Application.VBE.ActiveVBProject.Filename
+
+    On Error Resume Next
+    g_strActiveVBProjectName = Application.VBE.ActiveVBProject.Filename
+    On Error GoTo catchError
     
     '// first check for the config file
     If fConfFileExists Then
@@ -54,6 +56,19 @@ Sub CollectSettings()
     End If
     
     g_blnMakeConfFile = shtConfig.Range("rComponentTXTList")
+
+exitSub:
+    Exit Sub
+
+catchError:
+    MsgBox "Error building file list" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
+         , vbExclamation, "modImportExport.MakeFileList"
+    
+    '// reset the ide menu
+    Call auto_close
+    Call auto_open
+    
+    GoTo exitSub
     
 End Sub
 
