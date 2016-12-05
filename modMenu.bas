@@ -14,13 +14,11 @@ Dim EvtHandlers As New Collection
 Sub auto_open()
     Call CreateVBEMenu
     'Call CreateXLMenu
-    DetermineNonBuiltinCommandBars
     Call CollectSettings
 End Sub
 
 Sub auto_close()
     Call RemoveVBEMenu
-    DetermineNonBuiltinCommandBars
 End Sub
 
 Sub CreateVBEMenu()

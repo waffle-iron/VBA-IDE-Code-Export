@@ -24,18 +24,18 @@ Function fConfFileExists() As Boolean
 '        shtConfig.Range("rComponentTXTList") = g_blnConfigAvailable
         g_strConfigFilePath = strPath & strFile
         fConfFileExists = True
-        GoTo ExitFunction
+        GoTo exitFunction
     End If
         
     '// if not config
     g_blnConfigAvailable = False
     fConfFileExists = False
     
-ExitFunction:
+exitFunction:
     Exit Function
 
-CatchError:
-    GoTo ExitFunction
+catchError:
+    GoTo exitFunction
 
 End Function
 
@@ -50,7 +50,7 @@ Function fFilePicker(strPickType As String, Optional strFileSpec As String, Opti
     Dim varArrFilterElements()      As Variant
     Dim strSiteName                 As String
 
-    On Error GoTo CatchError
+    On Error GoTo catchError
    
     Select Case LCase(strPickType)
         Case "file"
@@ -94,11 +94,11 @@ Function fFilePicker(strPickType As String, Optional strFileSpec As String, Opti
     'Set the object variable to Nothing.
     Set fdiBox = Nothing
 
-ExitFunction:
+exitFunction:
     Exit Function
 
-CatchError:
-    GoTo ExitFunction
+catchError:
+    GoTo exitFunction
     
 End Function
 
@@ -209,7 +209,30 @@ Function fAddPathSeparator(strPath As String)
     
 End Function
 
+Function CleanIllegalCharacters(strClean As String) As String
 
+    On Error GoTo catchError
+
+    strClean = Replace(strClean, "[", "")
+    strClean = Replace(strClean, "]", "")
+    strClean = Replace(strClean, "-", "_")
+    strClean = Replace(strClean, " ", "_")
+
+    CleanIllegalCharacters = strClean
+    
+exitFunction:
+    Exit Function
+catchError:
+        
+    MsgBox "Error cleaning string." & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
+        , vbExclamation, "modFunctions.CleanIllegalCharacters"
+        
+    GoTo exitFunction
+End Function
 
 
     
+
+
+
+

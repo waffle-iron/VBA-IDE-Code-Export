@@ -18,8 +18,9 @@ Public Sub MakeFileList()
     Dim comComponent        As VBComponent
     Dim fsoFile             As Scripting.TextStream
     Dim FSO                 As New Scripting.FileSystemObject
+    Dim strDocumentName     As String
     
-    On Error GoTo CatchError
+    On Error GoTo catchError
     
     '// name this project if it has not been already
     If ThisWorkbook.VBProject.Name <> STRTHISPROJECTNAME Then ThisWorkbook.VBProject.Name = STRTHISPROJECTNAME
@@ -59,14 +60,20 @@ Public Sub MakeFileList()
                 Case Is = vbext_ct_ActiveXDesigner
                     fsoFile.WriteLine fComponentTypeToString(vbext_ct_ActiveXDesigner) & ": " & comComponent.Name
                 Case Is = vbext_ct_Document
-                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_Document) & ": " & comComponent.Name
+                    '// determine id ThisWorkbook or not
+                    If comComponent.Properties(30).Name = "IsAddin" Then
+                        fsoFile.WriteLine fComponentTypeToString(vbext_ct_Document) & ": " & comComponent.Name
+                    Else
+                        strDocumentName = CleanIllegalCharacters(comComponent.Properties(7).Value)
+                        fsoFile.WriteLine fComponentTypeToString(vbext_ct_Document) & ": " & comComponent.Name & "[" & strDocumentName & "]" '<ActualSheet name
+                    End If
             End Select
         Next
         
     Else '// add details to module modFileList
         On Error Resume Next
         Set modFileList = prjActVBProject.VBComponents("modFileList")
-        On Error GoTo CatchError
+        On Error GoTo catchError
         
         If modFileList Is Nothing Then
             '// module does not already exist
@@ -101,10 +108,10 @@ Public Sub MakeFileList()
     
     End If
     
-ExitSub:
+exitSub:
     Exit Sub
 
-CatchError:
+catchError:
     MsgBox "Error building file list" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.MakeFileList"
     
@@ -112,7 +119,7 @@ CatchError:
     Call auto_close
     Call auto_open
     
-    GoTo ExitSub
+    GoTo exitSub
 
 End Sub
 
@@ -157,17 +164,25 @@ Sub ExportFiles()
             
             Select Case Left(strLine, InStr(strLine, ": "))
                 Case Is = "Document Module:"
-                    strModuleName = Right(strLine, Len(strLine) - 17)
+                    strModuleName = Right(strLine, Len(strLine) - 17) '// Remove Document Module:
+                    If InStr(1, strLine, "[") <> 0 Then
+                        strModuleName = Mid(strModuleName, 1, InStr(1, strModuleName, "[") - 1) '// Remove >Name
+                    End If
                     '// this is taken from workbook and worksheet
                     Select Case prjActVBProject.VBComponents(strModuleName).Properties(4).Name
                         Case Is = "AcceptLabelsInFormulas" '// Workbook
-                            strDocType = "1.wbk"
+                            strDocType = ".wbk"
                         Case Is = "CodeName" '// Worksheet
-                            strDocType = "1.sht"
+                            strDocType = ".sht"
                     End Select
+                    
                     Set modTemp = prjActVBProject.VBComponents(strModuleName).CodeModule
-                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & strDocType)
+                    modTemp.Parent.Name = strModuleName & "_temp"
+                    prjActVBProject.VBComponents(modTemp.Parent.Name).Export (g_strExportTo & strModuleName & strDocType)
+                    modTemp.Parent.Name = strModuleName
+                    
                     modTemp.DeleteLines 1, modTemp.CountOfLines '// remove code from module
+                
                 Case Is = "Code Module:"
                     strModuleName = Right(strLine, Len(strLine) - 13)
                     prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".bas")
@@ -221,9 +236,9 @@ Sub ExportFiles()
     
     End If
     
-    MsgBox "Finished exporting " & prjActVBProject.Name
+    MsgBox "Finished exporting " & prjActVBProject.Name, vbInformation
 
-ExitSub:
+exitSub:
     Exit Sub
 
 ErrHandler:
@@ -233,7 +248,7 @@ ErrHandler:
     Call auto_close
     Call auto_open
     
-    GoTo ExitSub
+    GoTo exitSub
     
 End Sub
 
@@ -243,6 +258,7 @@ Sub ImportFiles()
     Dim prjActVBProject     As VBProject
     Dim modFileList         As VBComponent
     Dim strModuleName       As String
+    Dim strDocumentName     As String
     Dim intModRowCounter    As Integer
     Dim FSO                 As New Scripting.FileSystemObject
     Dim fsoFile             As Scripting.TextStream
@@ -252,7 +268,7 @@ Sub ImportFiles()
     Dim modCodePaste        As VBIDE.CodeModule
     Dim modTemp             As VBComponent
 
-    On Error GoTo CatchError
+    On Error GoTo catchError
 
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
     Set prjActVBProject = Application.VBE.ActiveVBProject
@@ -278,18 +294,22 @@ Sub ImportFiles()
                 Case Is = "Document Module:"
                     strModuleName = Right(strLine, Len(strLine) - 17)
                     '// this is taken from workbook and worksheet
+                    If InStr(1, strModuleName, "[") > 0 Then
+                        strModuleName = Left(strModuleName, InStr(1, strModuleName, "[") - 1)
+                        strDocumentName = CleanIllegalCharacters(Mid(strLine, InStr(1, strLine, "["), InStrRev(strLine, "[")))
+                    End If
+                    
                     Select Case prjActVBProject.VBComponents(strModuleName).Properties(4).Name
                         Case Is = "AcceptLabelsInFormulas" '// AcceptLabelsInFormulas=Workbook
-                            prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & "1.wbk")
+                            prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".wbk")
                         Case Is = "CodeName" '// CodeName=Worksheet
-                            prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & "1.sht")
+                            prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".sht")
                     End Select
-                    
+
                     On Error Resume Next
-                    Set modTemp = prjActVBProject.VBComponents(strModuleName & "1") '// the one is added because the name already exists
-                    modTemp.Name = strModuleName & "_temp"
-                    On Error GoTo CatchError
-                                        
+                    Set modTemp = prjActVBProject.VBComponents(strModuleName & "_temp")
+                    On Error GoTo catchError
+                
                     Set modCodeCopy = prjActVBProject.VBComponents(modTemp.Name).CodeModule
                     Set modCodePaste = prjActVBProject.VBComponents(strModuleName).CodeModule
                     
@@ -319,7 +339,7 @@ Sub ImportFiles()
         '// Check modFileList module exists
         On Error Resume Next
         Set modFileList = prjActVBProject.VBComponents("modFileList")
-        On Error GoTo CatchError
+        On Error GoTo catchError
     
         '// If modFileList module doesnt exist, you need to warn user then exit sub
         If modFileList Is Nothing Then
@@ -345,19 +365,19 @@ Sub ImportFiles()
         End With
     End If
     
-    MsgBox "Finished building " & prjActVBProject.Name
+    MsgBox "Finished building " & prjActVBProject.Name, vbInformation
 
-ExitSub:
+exitSub:
     Exit Sub
 
-CatchError:
+catchError:
     MsgBox "Error in Importing Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.ImportFiles"
     
     Call auto_close
     Call auto_open
     
-    GoTo ExitSub
+    GoTo exitSub
 
 End Sub
 
