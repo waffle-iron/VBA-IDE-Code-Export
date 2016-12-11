@@ -1,7 +1,7 @@
 # VBA IDE CodeExport
 For a while now I have used this code so that all the associated VBA files used in a VBA project (*.cls, *.bas, *.frm files) can be easily exported for use with a Version Control System.
 
-This is specifically for Excel, although the VBIDE extensibility can be used fro all the MS Office suite.
+This is specifically for Excel, although the VBIDE extensibility can be used for all the MS Office suite.
 
 ## Description
 On opening it will create a menu in the VBA IDE called 'Export for VCS' with the options 'Make File List', 'Import Files', 'Export Files' and 'Configure Export'.
