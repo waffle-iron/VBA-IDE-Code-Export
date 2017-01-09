@@ -1,4 +1,7 @@
 # VBA IDE CodeExport
+
+[![The MIT License](https://img.shields.io/badge/license-MIT-orange.svg?style=flat-square)](http://opensource.org/licenses/MIT)
+
 For a while now I have used this code so that all the associated VBA files used in a VBA project (*.cls, *.bas, *.frm files) can be easily exported for use with a Version Control System.
 
 This is specifically for Excel, although the VBIDE extensibility can be used for all the MS Office suite.
@@ -28,4 +31,9 @@ Save and open again, the auto_open should take care of creating the VBA IDE menu
 Please fork this repository and contribute back using pull requests.
 
 Any contributions, large or small, major features, bugfixes and integration tests are welcomed and appreciated but will be thoroughly reviewed and discussed.
+
+## Roadmap
+
+- [] Add pretty ribbon UI
+- [] Save XL as XML
 
