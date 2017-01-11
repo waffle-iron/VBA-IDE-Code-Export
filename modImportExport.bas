@@ -20,9 +20,6 @@ Public Sub MakeFileList()
 
     On Error GoTo catchError
 
-    '// name this project if it has not been already
-    If ThisWorkbook.VBProject.Name <> STRTHISPROJECTNAME Then ThisWorkbook.VBProject.Name = STRTHISPROJECTNAME
-
     Set prjActVBProject = Application.VBE.ActiveVBProject
     If prjActVBProject Is Nothing Then Exit Sub
 
