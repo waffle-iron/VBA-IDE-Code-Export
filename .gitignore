@@ -1,0 +1,5 @@
+# Don't commit VBA-IDE-Code-Export.xlsm unless you really mean to
+VBA-IDE-Code-Export.xlsm
+
+# Excel temporary files
+~*
