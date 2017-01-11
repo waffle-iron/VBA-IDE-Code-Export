@@ -34,6 +34,8 @@ Please fork this repository and contribute back using pull requests.
 
 Any contributions, large or small, major features, bugfixes and integration tests are welcomed and appreciated but will be thoroughly reviewed and discussed.
 
+Please use the template file `VBA-IDE-Code-Export.xlsm` for working in, however don't commit the template file unless you are actually making a change to the template file. This helps with source control since merging an Excel file is not fun.
+
 ## Roadmap
 
 - [] Add pretty ribbon UI
