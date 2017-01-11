@@ -10,11 +10,9 @@ Option Explicit
 Dim MnuEvt      As clsVBECmdHandler
 Dim EvtHandlers As New Collection
 
-
 Sub auto_open()
     Call CreateVBEMenu
     'Call CreateXLMenu
-    Call CollectSettings
 End Sub
 
 Sub auto_close()
@@ -43,11 +41,7 @@ Sub CreateVBEMenu()
         objMenuItem.OnAction = "ExportFiles"
         Call MenuEvents(objMenuItem)
         objMenuItem.Caption = "&Export Files"
-        
-        Set objMenuItem = .Controls.Add(Type:=msoControlButton)
-        objMenuItem.OnAction = "ConfigureExport"
-        Call MenuEvents(objMenuItem)
-        objMenuItem.Caption = "&Configure Export"
+
     End With
 
     Set objMenuItem = Nothing
@@ -69,8 +63,6 @@ Sub CreateXLMenu()
              OnAction:="ImportFiles"
         .Add Caption:="&Export Files", _
              OnAction:="ExportFiles"
-        .Add Caption:="&Configure Export", _
-             OnAction:="ConfigureExport"
     End With
 End Sub
 
@@ -86,7 +78,7 @@ Sub RemoveVBEMenu()
 
     Set EvtHandlers = Nothing
     Set MnuEvt = Nothing
-    
+
     Application.CommandBars("Worksheet Menu Bar").Controls("E&xport for VCS").Delete
     On Error GoTo 0
 
@@ -106,8 +98,3 @@ Sub DetermineNonBuiltinCommandBars()
         End If
     Next
 End Sub
-
-
-
-
-
