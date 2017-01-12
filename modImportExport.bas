@@ -7,7 +7,9 @@ Option Explicit
 '// Also check the 'Trust access to the VBA project model check box', located...
 '// Trust Centre, Trust Centre Settings, Macro Settings, Trust access to the VBA project model
 
-Public Const STRCONFIGFILENAME      As String = "CodeExportFileList.conf"
+Private Const STRCONFIGFILENAME         As String = "CodeExportFileList.conf"
+Private Const STR_CONFIGKEY_MODULEPATHS As String = "Module Paths"
+Private Const ForReading                As Integer = 1
 
 
 '// if config file is available and ListConf is checked
@@ -18,48 +20,47 @@ Public Sub MakeFileList()
     Dim prjActVBProject     As VBProject
     Dim strConfigFilePath   As String
     Dim comComponent        As VBComponent
-    Dim fsoFile             As Scripting.TextStream
+    Dim tsConfigStream      As Scripting.TextStream
     Dim FSO                 As Scripting.FileSystemObject
-    Dim strDocumentName     As String
+    Dim dictConfig          As Dictionary
+    Dim dictModulePaths     As Dictionary
+    Dim strConfigJson       As String
+    Dim strExtension        As String
 
     On Error GoTo catchError
 
     Set prjActVBProject = Application.VBE.ActiveVBProject
     If prjActVBProject Is Nothing Then Exit Sub
 
-    strConfigFilePath = ConfigFilePath(prjActVBProject)
-
-    Set FSO = New Scripting.FileSystemObject
-    '// delete the config file if it exists
-    With FSO
-        If .FileExists(strConfigFilePath) Then
-            .DeleteFile strConfigFilePath
-        End If
-    End With
-    '// create the file
-    Set fsoFile = FSO.CreateTextFile(strConfigFilePath)
-
-    '// For each module form etc, add the name to the config file
+    '// Collect the name of each module, form, etc.
+    Set dictModulePaths = New Dictionary
     For Each comComponent In prjActVBProject.VBComponents
+
+        strExtension = vbNullString
         Select Case comComponent.Type
             Case vbext_ct_StdModule
-                 fsoFile.WriteLine fComponentTypeToString(vbext_ct_StdModule) & ": " & comComponent.Name
-            Case vbext_ct_ClassModule
-                fsoFile.WriteLine fComponentTypeToString(vbext_ct_ClassModule) & ": " & comComponent.Name
+                strExtension = "bas"
+            Case vbext_ct_ClassModule, vbext_ct_Document
+                strExtension = "cls"
             Case vbext_ct_MSForm
-                fsoFile.WriteLine fComponentTypeToString(vbext_ct_MSForm) & ": " & comComponent.Name
-            Case vbext_ct_ActiveXDesigner
-                fsoFile.WriteLine fComponentTypeToString(vbext_ct_ActiveXDesigner) & ": " & comComponent.Name
-            Case vbext_ct_Document
-                '// determine id ThisWorkbook or not
-                If comComponent.Properties(30).Name = "IsAddin" Then
-                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_Document) & ": " & comComponent.Name
-                Else
-                    strDocumentName = CleanIllegalCharacters(comComponent.Properties(7).Value)
-                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_Document) & ": " & comComponent.Name & "[" & strDocumentName & "]" '<ActualSheet name
-                End If
+                strExtension = "frm"
         End Select
-    Next
+
+        If Not strExtension = vbNullString Then
+            dictModulePaths.Add comComponent.Name, comComponent.Name & "." & strExtension
+        End If
+
+    Next comComponent
+
+    Set dictConfig = New Dictionary
+    dictConfig.Add STR_CONFIGKEY_MODULEPATHS, dictModulePaths
+    strConfigJson = JsonConverter.ConvertToJson(dictConfig, vbTab)
+
+    strConfigFilePath = ConfigFilePath(prjActVBProject)
+    Set FSO = New Scripting.FileSystemObject
+    Set tsConfigStream = FSO.CreateTextFile(strConfigFilePath, True)
+    tsConfigStream.Write strConfigJson
+    tsConfigStream.Close
 
 exitSub:
     Exit Sub
@@ -82,13 +83,15 @@ Public Sub ExportFiles()
     Dim prjActVBProject     As VBProject
     Dim strConfigFilePath   As String
     Dim strVBASourceDirPath As String
+    Dim varModuleName       As Variant
     Dim strModuleName       As String
     Dim FSO                 As Scripting.FileSystemObject
-    Dim fsoFile             As Scripting.TextStream
-    Dim strLine             As String
-    Dim strDocType          As String
-
-    Dim modTemp             As VBIDE.CodeModule
+    Dim tsConfigStream      As Scripting.TextStream
+    Dim strConfigJson       As String
+    Dim dictConfig          As Dictionary
+    Dim dictModulePaths     As Dictionary
+    Dim strModulePath       As String
+    Dim comModuleComponent  As VBComponent
 
     On Error GoTo ErrHandler
 
@@ -96,60 +99,34 @@ Public Sub ExportFiles()
     If prjActVBProject Is Nothing Then Exit Sub
 
     strConfigFilePath = ConfigFilePath(prjActVBProject)
-    strVBASourceDirPath = VBASourceDirPath(prjActVBProject)
-
     Set FSO = New Scripting.FileSystemObject
-    '// check that .conf file exists
-    With FSO
-        If Not .FileExists(strConfigFilePath) Then
-            MsgBox "You need to create file list config file before you can export files!"
-            Exit Sub
+    If Not FSO.FileExists(strConfigFilePath) Then
+        MsgBox "You need to create file list config file before you can export files!"
+        Exit Sub
+    End If
+    Set tsConfigStream = FSO.OpenTextFile(strConfigFilePath, ForReading)
+    strConfigJson = tsConfigStream.ReadAll()
+    tsConfigStream.Close
+    Set dictConfig = JsonConverter.ParseJson(strConfigJson)
+
+    strVBASourceDirPath = VBASourceDirPath(prjActVBProject)
+    Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
+    For Each varModuleName In dictModulePaths.Keys
+
+        strModuleName = varModuleName
+        strModulePath = dictModulePaths(strModuleName)
+        strModulePath = NormalisePath(strModulePath, strVBASourceDirPath)
+        Set comModuleComponent = prjActVBProject.VBComponents(strModuleName)
+
+        comModuleComponent.Export strModulePath
+
+        If comModuleComponent.Type = vbext_ct_Document Then
+            comModuleComponent.CodeModule.DeleteLines 1, comModuleComponent.CodeModule.CountOfLines
+        Else
+            prjActVBProject.VBComponents.Remove comModuleComponent
         End If
-    End With
 
-    '// open the .conf file
-    Set fsoFile = FSO.OpenTextFile(strConfigFilePath, ForReading)
-
-    '// loop through each object listed in the .conf file and export with file extension
-    Do Until fsoFile.AtEndOfStream
-        strLine = fsoFile.ReadLine
-
-        Select Case Left(strLine, InStr(strLine, ": "))
-            Case "Document Module:"
-                strModuleName = Right(strLine, Len(strLine) - 17) '// Remove Document Module:
-                If InStr(1, strLine, "[") <> 0 Then
-                    strModuleName = Mid(strModuleName, 1, InStr(1, strModuleName, "[") - 1) '// Remove >Name
-                End If
-                '// this is taken from workbook and worksheet
-                Select Case prjActVBProject.VBComponents(strModuleName).Properties(4).Name
-                    Case "AcceptLabelsInFormulas" '// Workbook
-                        strDocType = ".wbk"
-                    Case "CodeName" '// Worksheet
-                        strDocType = ".sht"
-                End Select
-
-                Set modTemp = prjActVBProject.VBComponents(strModuleName).CodeModule
-                modTemp.Parent.Name = strModuleName & "_temp"
-                prjActVBProject.VBComponents(modTemp.Parent.Name).Export (strVBASourceDirPath & strModuleName & strDocType)
-                modTemp.Parent.Name = strModuleName
-
-                modTemp.DeleteLines 1, modTemp.CountOfLines '// remove code from module
-
-            Case "Code Module:"
-                strModuleName = Right(strLine, Len(strLine) - 13)
-                prjActVBProject.VBComponents(strModuleName).Export (strVBASourceDirPath & strModuleName & ".bas")
-                prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-            Case "Class Module:"
-                strModuleName = Right(strLine, Len(strLine) - 14)
-                prjActVBProject.VBComponents(strModuleName).Export (strVBASourceDirPath & strModuleName & ".cls")
-                prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-            Case "UserForm:"
-                strModuleName = Right(strLine, Len(strLine) - 10)
-                prjActVBProject.VBComponents(strModuleName).Export (strVBASourceDirPath & strModuleName & ".frm")
-                prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-        End Select
-
-    Loop
+    Next varModuleName
 
     MsgBox "Finished exporting " & prjActVBProject.Name, vbInformation
 
@@ -173,14 +150,19 @@ Public Sub ImportFiles()
     Dim prjActVBProject     As VBProject
     Dim strConfigFilePath   As String
     Dim strVBASourceDirPath As String
+    Dim varModuleName       As Variant
     Dim strModuleName       As String
     Dim FSO                 As Scripting.FileSystemObject
-    Dim fsoFile             As Scripting.TextStream
-    Dim strLine             As String
+    Dim tsConfigStream      As Scripting.TextStream
+    Dim strConfigJson       As String
+    Dim dictConfig          As Dictionary
+    Dim dictModulePaths     As Dictionary
+    Dim strModulePath       As String
+    Dim comNewImport        As VBComponent
+    Dim comExistingComp     As VBComponent
 
     Dim modCodeCopy         As VBIDE.CodeModule
     Dim modCodePaste        As VBIDE.CodeModule
-    Dim modTemp             As VBComponent
 
     On Error GoTo catchError
 
@@ -188,67 +170,54 @@ Public Sub ImportFiles()
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
 
     strConfigFilePath = ConfigFilePath(prjActVBProject)
-    strVBASourceDirPath = VBASourceDirPath(prjActVBProject)
-
     Set FSO = New Scripting.FileSystemObject
-    '// check that .conf file exists
-    With FSO
-        If Not .FileExists(strConfigFilePath) Then
-            MsgBox "You need to create file list config file before you can import files!"
-            Exit Sub
+    If Not FSO.FileExists(strConfigFilePath) Then
+        MsgBox "You need to create file list config file before you can import files!"
+        Exit Sub
+    End If
+    Set tsConfigStream = FSO.OpenTextFile(strConfigFilePath, ForReading)
+    strConfigJson = tsConfigStream.ReadAll()
+    tsConfigStream.Close
+    Set dictConfig = JsonConverter.ParseJson(strConfigJson)
+
+    strVBASourceDirPath = VBASourceDirPath(prjActVBProject)
+    Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
+    For Each varModuleName In dictModulePaths.Keys
+
+        strModuleName = varModuleName
+        strModulePath = dictModulePaths(strModuleName)
+        strModulePath = NormalisePath(strModulePath, strVBASourceDirPath)
+
+        Set comNewImport = prjActVBProject.VBComponents.Import(strModulePath)
+        If comNewImport.Name <> strModuleName Then
+            If CollectionKeyExists(prjActVBProject.VBComponents, strModuleName) Then
+
+                Set comExistingComp = prjActVBProject.VBComponents(strModuleName)
+                If comExistingComp.Type = vbext_ct_Document Then
+
+                    Set modCodeCopy = comNewImport.CodeModule
+                    Set modCodePaste = comExistingComp.CodeModule
+                    modCodePaste.DeleteLines 1, modCodePaste.CountOfLines
+                    If modCodeCopy.CountOfLines > 0 Then
+                        modCodePaste.AddFromString modCodeCopy.Lines(1, modCodeCopy.CountOfLines)
+                    End If
+                    prjActVBProject.VBComponents.Remove comNewImport
+
+                Else
+
+                    prjActVBProject.VBComponents.Remove comExistingComp
+                    comNewImport.Name = strModuleName
+
+                End If
+            Else
+
+                comNewImport.Name = strModuleName
+
+            End If
+
         End If
-    End With
 
-    '// open the .conf file
-    Set fsoFile = FSO.OpenTextFile(strConfigFilePath, ForReading)
-
-    '// loop through each object listed in the .conf file and export with file extension
-    Do Until fsoFile.AtEndOfStream
-        strLine = fsoFile.ReadLine
-
-        Select Case Left(strLine, InStr(strLine, ": "))
-            Case "Document Module:"
-                strModuleName = Right(strLine, Len(strLine) - 17)
-                '// this is taken from workbook and worksheet
-                If InStr(1, strModuleName, "[") > 0 Then
-                    strModuleName = Left(strModuleName, InStr(1, strModuleName, "[") - 1)
-                End If
-
-                Select Case prjActVBProject.VBComponents(strModuleName).Properties(4).Name
-                    Case "AcceptLabelsInFormulas" '// AcceptLabelsInFormulas=Workbook
-                        prjActVBProject.VBComponents.Import (strVBASourceDirPath & strModuleName & ".wbk")
-                    Case "CodeName" '// CodeName=Worksheet
-                        prjActVBProject.VBComponents.Import (strVBASourceDirPath & strModuleName & ".sht")
-                End Select
-
-                On Error Resume Next
-                Set modTemp = prjActVBProject.VBComponents(strModuleName & "_temp")
-                On Error GoTo catchError
-
-                Set modCodeCopy = prjActVBProject.VBComponents(modTemp.Name).CodeModule
-                Set modCodePaste = prjActVBProject.VBComponents(strModuleName).CodeModule
-
-                modCodePaste.DeleteLines 1, modCodePaste.CountOfLines
-
-                If modCodeCopy.CountOfLines > 0 Then
-                    modCodePaste.AddFromString modCodeCopy.Lines(1, modCodeCopy.CountOfLines)
-                End If
-
-                '// module already exists, so first remove it
-                prjActVBProject.VBComponents.Remove modTemp
-
-            Case "Code Module:"
-                strModuleName = Right(strLine, Len(strLine) - 13)
-                prjActVBProject.VBComponents.Import (strVBASourceDirPath & strModuleName & ".bas")
-            Case "Class Module:"
-                strModuleName = Right(strLine, Len(strLine) - 14)
-                prjActVBProject.VBComponents.Import (strVBASourceDirPath & strModuleName & ".cls")
-            Case "UserForm:"
-                strModuleName = Right(strLine, Len(strLine) - 10)
-                prjActVBProject.VBComponents.Import (strVBASourceDirPath & strModuleName & ".frm")
-        End Select
-
-    Loop
+    Next varModuleName
 
     MsgBox "Finished building " & prjActVBProject.Name, vbInformation
 
@@ -275,6 +244,24 @@ Private Function ConfigFilePath(ByVal Project As VBProject) As String
 End Function
 
 
+'// Parse path name
+Private Function NormalisePath(ByVal Path As String, ByVal BaseDir As String) As String
+
+    Dim FSO As Scripting.FileSystemObject
+
+    Set FSO = New Scripting.FileSystemObject
+    If FSO.GetDriveName(Path) = vbNullString Then
+        '// Assume path is relative
+        NormalisePath = FSO.BuildPath(BaseDir, Path)
+    Else
+        '// Assume path is absolute
+        NormalisePath = Path
+    End If
+    NormalisePath = FSO.GetAbsolutePathName(NormalisePath)
+    
+End Function
+
+
 '// Path of the VBA source directory for a given VBProject
 Private Function VBASourceDirPath(ByVal Project As VBProject) As String
 
@@ -294,47 +281,11 @@ Private Function ProjParentDirPath(ByVal Project As VBProject) As String
 End Function
 
 
-Private Function fComponentTypeToString(ByVal ComponentType As VBIDE.vbext_ComponentType) As String
+Private Function CollectionKeyExists(ByVal coll As Object, ByVal key As String) As Boolean
 
-    Select Case ComponentType
-        Case vbext_ct_ActiveXDesigner
-            fComponentTypeToString = "ActiveX Designer"
-        Case vbext_ct_ClassModule
-            fComponentTypeToString = "Class Module"
-        Case vbext_ct_Document
-            fComponentTypeToString = "Document Module"
-        Case vbext_ct_MSForm
-            fComponentTypeToString = "UserForm"
-        Case vbext_ct_StdModule
-            fComponentTypeToString = "Code Module"
-        Case Else
-            fComponentTypeToString = "Unknown Type: " & CStr(ComponentType)
-    End Select
-
-End Function
-
-
-Private Function CleanIllegalCharacters(ByVal strToClean As String) As String
-
-    Dim strClean As String
-
-    On Error GoTo catchError
-
-    strClean = strToClean
-    strClean = Replace(strClean, "[", "")
-    strClean = Replace(strClean, "]", "")
-    strClean = Replace(strClean, "-", "_")
-    strClean = Replace(strClean, " ", "_")
-
-    CleanIllegalCharacters = strClean
-
-exitFunction:
-    Exit Function
-
-catchError:
-    MsgBox "Error cleaning string." & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
-        , vbExclamation, "modFunctions.CleanIllegalCharacters"
-
-    GoTo exitFunction
+    On Error Resume Next
+    coll (key)
+    CollectionKeyExists = (Err.Number = 0)
+    On Error GoTo 0
 
 End Function
