@@ -6,29 +6,37 @@ For a while now I have used this code so that all the associated VBA files used 
 
 This is specifically for Excel, although the VBIDE extensibility can be used for all the MS Office suite.
 
-## Description
-On opening it will create a menu in the VBA IDE called 'Export for VCS' with the options 'Make File List', 'Import Files', 'Export Files'.
+## Installing
 
-The default process for use is:
+1. Obtain a copy of the add-in by following the build instructions below.
+2. Save the add-in in your add-ins folder. Add-ins saved in your add-ins folder are loaded automatically. 
+3. Finally, enable the add-in in Excel.
 
-1. Make a File List
-    - This will list all the objects in the project in a newly created file called 'CodeExportFileList.conf' in the same directory as the VBA project file.
-2. Export the Files
-    - This will export the files listed in 'CodeExportFileList.conf' to the directory which contains the VBA project file and remove all modules from the project.
-3. Import the files
-    - This uses the 'CodeExportFileList.conf' file to build the project, all the files should be present to built the project.
+## Usage
 
-## Build
+The add-in will create a menu in the VBA IDE (the VBE) called `Export for VCS`. All controls for the add-in are found in this menu. 
+
+### The configuration file
+
+A file named `CodeExportFileList.conf` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make File List` button in the `Export For VCS` menu will generate a new configuration file for the current active project based upon the contents of that project. Be careful; this command will overwrite any existing configuration file.
+
+The "Module Paths" property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file.
+
+### Importing
+
+The `Import Files` button in the `Export For VCS` menu will import all the modules specified in the configuration file from the file system into the Excel file. Be careful; this command will overwrite existing modules in the active project.
+
+### Exporting
+
+The `Export Files` button in the `Export For VCS` menu will export all the modules specified in the configuration file from the Excel file into the appropriate places in the file system. Be careful; this command will overwrite existing files in the filesystem.
+
+## Building
 
 1. Open the template file `VBA-IDE-Code-Export.xlsm`.
 2. Import the files specified in `CodeExportFileList.conf` (Tip: Use a previously installed copy of this Add-In).
 3. Compile project as a smoke test.
 4. Set password protection to prevent the Add-In code annoying you in the VBE and to prevent accidental changes.
 5. Save as an Add-In.
-
-## Install
-
-Save the Add-In in your Add-Ins folder. Add-Ins placed here will be loaded automatically. Once the Add-In is installed, enable the Add-In in Excel.
 
 ## Contributing
 Please fork this repository and contribute back using pull requests.
