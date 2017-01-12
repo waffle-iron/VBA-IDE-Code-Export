@@ -20,7 +20,7 @@ The add-in will create a menu in the VBA IDE (the VBE) called `Export for VCS`. 
 
 A file named `CodeExportFileList.conf` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make File List` button in the `Export For VCS` menu will generate a new configuration file for the current active project based upon the contents of that project. Be careful; this command will overwrite any existing configuration file.
 
-The "Module Paths" property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file.
+Standard JSON is used as the file format for the configuration file. The "Module Paths" property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file. There are no other configuration properties *yet*.
 
 ### Importing
 
