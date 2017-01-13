@@ -28,11 +28,18 @@ The `References` property declares the references to libraries that your VBA mod
 
 ### Importing
 
-The `Import Files` button in the `Export For VCS` menu will import all the modules specified in the configuration file from the file system into the Excel file. Be careful; this command will overwrite existing modules in the active project.
+The `Import Files` button in the `Export For VCS` menu will:
+
+* Import all the modules specified in the configuration file from the file system into the Excel file. Existing modules will be overwritten.
+* Add all library references declared in the configuration file. Existing library references will be overwritten.
+
 
 ### Exporting
 
-The `Export Files` button in the `Export For VCS` menu will export all the modules specified in the configuration file from the Excel file into the appropriate places in the file system. Be careful; this command will overwrite existing files in the filesystem.
+The `Export Files` button in the `Export For VCS` menu will:
+
+* Export all the modules specified in the configuration file from the Excel file into the appropriate places in the file system. Existing files will be overwritten.
+* Remove library references from the project which are declared in the configuration file.
 
 ## Building
 
@@ -50,5 +57,5 @@ Please use the template file `VBA-IDE-Code-Export.xlsm` for working in, however 
 
 ## Roadmap
 
-- [] Add pretty ribbon UI
-- [] Save XL as XML
+- [ ] Add pretty ribbon UI
+- [ ] Save XL as XML
