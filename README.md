@@ -9,8 +9,10 @@ This is specifically for Excel, although the VBIDE extensibility can be used for
 ## Installing
 
 1. Obtain a copy of the add-in by following the build instructions below.
-2. Save the add-in in your add-ins folder. Add-ins saved in your add-ins folder are loaded automatically. 
+2. Save the add-in in your add-ins folder. Add-ins saved in your add-ins folder are loaded automatically.
 3. Finally, enable the add-in in Excel.
+
+Optionally, set password protection to prevent the Add-In code annoying you in the VBE and to prevent accidental changes.
 
 ## Usage
 
@@ -18,9 +20,11 @@ The add-in will create a menu in the VBA IDE (the VBE) called `Export for VCS`. 
 
 ### The configuration file
 
-A file named `CodeExportFileList.conf` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make File List` button in the `Export For VCS` menu will generate a new configuration file for the current active project based upon the contents of that project. Be careful; this command will overwrite any existing configuration file.
+A file named `CodeExportFileList.conf` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make File List` button in the `Export For VCS` menu will generate a new configuration file for the current active project based upon the contents of that project. Be careful; this command will overwrite any existing configuration file. The JSON file format is used as the file format for the configuration file.
 
-Standard JSON is used as the file format for the configuration file. The "Module Paths" property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file. There are no other configuration properties *yet*.
+The "Module Paths" property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file.
+
+The "References" property declares the references to libraries that your VBA modules require. These will be imported when the import action is used and will be removed when the export action is used.
 
 ### Importing
 
@@ -35,7 +39,6 @@ The `Export Files` button in the `Export For VCS` menu will export all the modul
 1. Open the template file `VBA-IDE-Code-Export.xlsm`.
 2. Import the files specified in `CodeExportFileList.conf` (Tip: Use a previously installed copy of this Add-In).
 3. Compile project as a smoke test.
-4. Set password protection to prevent the Add-In code annoying you in the VBE and to prevent accidental changes.
 5. Save as an Add-In.
 
 ## Contributing
