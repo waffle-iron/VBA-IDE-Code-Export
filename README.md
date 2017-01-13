@@ -20,10 +20,11 @@ The default process for use is:
 
 ## Build
 
-1. Open the template file `VBA-IDE-Code-Export.xlsm`
-2. Import the files specified in `CodeExportFileList.conf` (Tip: Use a previously installed copy of this Add-In)
-3. Compile project as a smoke test
-4. Save as an Add-In.
+1. Open the template file `VBA-IDE-Code-Export.xlsm`.
+2. Import the files specified in `CodeExportFileList.conf` (Tip: Use a previously installed copy of this Add-In).
+3. Compile project as a smoke test.
+4. Set password protection to prevent the Add-In code annoying you in the VBE and to prevent accidental changes.
+5. Save as an Add-In.
 
 ## Install
 
@@ -40,4 +41,3 @@ Please use the template file `VBA-IDE-Code-Export.xlsm` for working in, however 
 
 - [] Add pretty ribbon UI
 - [] Save XL as XML
-
