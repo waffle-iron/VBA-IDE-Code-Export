@@ -20,20 +20,21 @@ The default process for use is:
 
 ## Build
 
-1. Open Excel, and create a new blank workbook.
-2. Open the VBE and import the following VBA source files:
-    * `clsVBECmdHandler.cls`
-    * `modImportExport.bas`
-    * `modMenu.bas`
-3. Create a reference to the following libraries:
-    * `Microsoft Visual Basic For Applications Extensibility 5.3`
-    * `Microsoft Scripting Runtime`
-4. Save the workbook as an Excel Add-in.
+1. Open the template file `VBA-IDE-Code-Export.xlsm`
+2. Import the files specified in `CodeExportFileList.conf` (Tip: Use a previously installed copy of this Add-In)
+3. Compile project as a smoke test
+4. Save as an Add-In.
+
+## Install
+
+Save the Add-In in your Add-Ins folder. Add-Ins placed here will be loaded automatically. Once the Add-In is installed, enable the Add-In in Excel.
 
 ## Contributing
 Please fork this repository and contribute back using pull requests.
 
 Any contributions, large or small, major features, bugfixes and integration tests are welcomed and appreciated but will be thoroughly reviewed and discussed.
+
+Please use the template file `VBA-IDE-Code-Export.xlsm` for working in, however don't commit the template file unless you are actually making a change to the template file. This helps with source control since merging an Excel file is not fun.
 
 ## Roadmap
 

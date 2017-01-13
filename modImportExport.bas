@@ -25,7 +25,6 @@ Public Sub MakeFileList()
 
     Set prjActVBProject = Application.VBE.ActiveVBProject
     If prjActVBProject Is Nothing Then Exit Sub
-    If prjActVBProject.Name = STRTHISPROJECTNAME Then Exit Sub
 
     strConfigFilePath = ConfigFilePath(prjActVBProject)
 
