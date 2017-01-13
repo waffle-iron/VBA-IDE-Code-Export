@@ -7,7 +7,7 @@ Option Explicit
 '// Also check the 'Trust access to the VBA project model check box', located...
 '// Trust Centre, Trust Centre Settings, Macro Settings, Trust access to the VBA project model
 
-Private Const STRCONFIGFILENAME         As String = "CodeExportFileList.conf"
+Private Const STRCONFIGFILENAME         As String = "CodeExport.config.json"
 
 Private Const STR_CONFIGKEY_MODULEPATHS             As String = "Module Paths"
 Private Const STR_CONFIGKEY_REFERENCES              As String = "References"
@@ -21,7 +21,7 @@ Private Const STR_CONFIGKEY_REFERENCE_PATH          As String = "Path"
 Private Const ForReading                As Integer = 1
 
 
-Public Sub MakeFileList()
+Public Sub MakeConfigFile()
 
     Dim prjActProj          As VBProject
 
@@ -104,7 +104,7 @@ catchError:
 End Sub
 
 
-Public Sub ExportFiles()
+Public Sub Export()
 
     Dim prjActProj          As VBProject
 
@@ -172,7 +172,7 @@ ErrHandler:
 End Sub
 
 
-Public Sub ImportFiles()
+Public Sub Import()
 
     Dim prjActProj          As VBProject
 

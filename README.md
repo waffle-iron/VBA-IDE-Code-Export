@@ -16,11 +16,11 @@ Optionally, set password protection to prevent the Add-In code annoying you in t
 
 ## Usage
 
-The add-in will create a menu in the VBA IDE (the VBE) called `Export for VCS`. All controls for the add-in are found in this menu. 
+The add-in will create a menu in the VBA IDE (the VBE) called `Export for VCS`. All controls for the add-in are found in this menu.
 
 ### The configuration file
 
-A file named `CodeExportFileList.conf` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make File List` button in the `Export For VCS` menu will generate a new configuration file for the current active project based upon the contents of that project. Be careful; this command will overwrite any existing configuration file. The JSON file format is used as the file format for the configuration file.
+A file named `CodeExport.config.json` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make Config File` button in the `Export For VCS` menu will generate a new configuration file for the current active project based upon the contents of that project. Any existing configuration file will be overwritten. The JSON file format is used as the file format for the configuration file.
 
 The `Module Paths` property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file.
 
@@ -28,7 +28,7 @@ The `References` property declares the references to libraries that your VBA mod
 
 ### Importing
 
-The `Import Files` button in the `Export For VCS` menu will:
+The `Import` button in the `Export For VCS` menu will:
 
 * Import all the modules specified in the configuration file from the file system into the Excel file. Existing modules will be overwritten.
 * Add all library references declared in the configuration file. Existing library references will be overwritten.
@@ -36,7 +36,7 @@ The `Import Files` button in the `Export For VCS` menu will:
 
 ### Exporting
 
-The `Export Files` button in the `Export For VCS` menu will:
+The `Export` button in the `Export For VCS` menu will:
 
 * Export all the modules specified in the configuration file from the Excel file into the appropriate places in the file system. Existing files will be overwritten.
 * Remove library references from the project which are declared in the configuration file.
@@ -44,7 +44,7 @@ The `Export Files` button in the `Export For VCS` menu will:
 ## Building
 
 1. Open the template file `VBA-IDE-Code-Export.xlsm`.
-2. Import the files specified in `CodeExportFileList.conf` (Tip: Use a previously installed copy of this Add-In).
+2. Import the files specified in `CodeExport.config.json` (Tip: Use a previously installed copy of this Add-In).
 3. Compile project as a smoke test.
 5. Save as an Add-In.
 
