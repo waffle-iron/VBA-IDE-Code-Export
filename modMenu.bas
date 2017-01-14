@@ -36,19 +36,19 @@ Private Sub CreateVBEMenu()
         objMenu.Caption = "E&xport for VCS"
 
         Set objMenuItem = .Controls.Add(Type:=msoControlButton)
-        objMenuItem.OnAction = "MakeFileList"
+        objMenuItem.OnAction = "MakeConfigFile"
         Call MenuEvents(objMenuItem)
-        objMenuItem.Caption = "&Make File List"
+        objMenuItem.Caption = "&Make Config File"
 
         Set objMenuItem = .Controls.Add(Type:=msoControlButton)
-        objMenuItem.OnAction = "ImportFiles"
+        objMenuItem.OnAction = "Import"
         Call MenuEvents(objMenuItem)
-        objMenuItem.Caption = "&Import Files"
+        objMenuItem.Caption = "&Import"
 
         Set objMenuItem = .Controls.Add(Type:=msoControlButton)
-        objMenuItem.OnAction = "ExportFiles"
+        objMenuItem.OnAction = "Export"
         Call MenuEvents(objMenuItem)
-        objMenuItem.Caption = "&Export Files"
+        objMenuItem.Caption = "&Export"
 
     End With
 
@@ -71,12 +71,12 @@ Private Sub CreateXLMenu()
 
     MenuBars(xlWorksheet).Menus.Add Caption:="E&xport for VCS"
     With MenuBars(xlWorksheet).Menus("Export for VCS").MenuItems
-        .Add Caption:="&Make File List", _
-             OnAction:="MakeFileList"
-        .Add Caption:="&Import Files", _
-             OnAction:="ImportFiles"
-        .Add Caption:="&Export Files", _
-             OnAction:="ExportFiles"
+        .Add Caption:="&Make Config File", _
+             OnAction:="MakeConfigFile"
+        .Add Caption:="&Import", _
+             OnAction:="Import"
+        .Add Caption:="&Export", _
+             OnAction:="Export"
     End With
 
 End Sub
