@@ -1,242 +1,159 @@
 Attribute VB_Name = "modImportExport"
 Option Explicit
 
-'// Worksheet named ranges
-'// rImportFrom
-'// rExportTo
-'// rComponentTXTList
-'// rConfFileName
+'// Add references for :
+'//     Microsoft Visual Basic For Applications Extensibility 5.3
+'//     Microsoft Scripting Runtime
+'// Also check the 'Trust access to the VBA project model check box', located...
+'// Trust Centre, Trust Centre Settings, Macro Settings, Trust access to the VBA project model
 
-'// if config file is available and ListConf is checked
-'// then make file list, import and export from file
-'// else make file list, import and export from module
+Private Const STRCONFIGFILENAME         As String = "CodeExport.config.json"
 
-Public Sub MakeFileList()
+Private Const STR_CONFIGKEY_MODULEPATHS             As String = "Module Paths"
+Private Const STR_CONFIGKEY_REFERENCES              As String = "References"
+Private Const STR_CONFIGKEY_REFERENCE_NAME          As String = "Name"
+Private Const STR_CONFIGKEY_REFERENCE_DESCRIPTION   As String = "Description"
+Private Const STR_CONFIGKEY_REFERENCE_GUID          As String = "GUID"
+Private Const STR_CONFIGKEY_REFERENCE_MAJOR         As String = "Major"
+Private Const STR_CONFIGKEY_REFERENCE_MINOR         As String = "Minor"
+Private Const STR_CONFIGKEY_REFERENCE_PATH          As String = "Path"
 
-    Dim prjActVBProject     As VBProject
-    Dim modFileList         As VBComponent
-    Dim comComponent        As VBComponent
-    Dim fsoFile             As Scripting.TextStream
-    Dim FSO                 As New Scripting.FileSystemObject
-    Dim strDocumentName     As String
-    
+Private Const ForReading                As Integer = 1
+
+
+Public Sub MakeConfigFile()
+
+    Dim prjActProj          As VBProject
+
+    Dim dictConfig          As Dictionary
+    Dim dictModulePaths     As Dictionary
+    Dim collReferences      As Collection
+    Dim dictReferenceConfig As Dictionary
+
+    Dim comModule           As VBComponent
+    Dim strFileExt          As String
+    Dim refReference        As Reference
+
     On Error GoTo catchError
-    
-    '// name this project if it has not been already
-    If ThisWorkbook.VBProject.Name <> STRTHISPROJECTNAME Then ThisWorkbook.VBProject.Name = STRTHISPROJECTNAME
 
-    If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
-    Set prjActVBProject = Application.VBE.ActiveVBProject
-    
-    '// Add logic sso that this project is not listed
-    If prjActVBProject.Name = STRTHISPROJECTNAME Then Exit Sub
-    
-    '// determine if  the list needs to be in a module or txt file
-    If g_blnMakeConfFile Then
-        '// write out to conf file
-        
-        '// delete the file if it exists
-        With FSO
-            If .FileExists(g_strConfigFilePath) Then
-                .DeleteFile g_strConfigFilePath
-            End If
-        End With
-        '// create the file
-        Set fsoFile = FSO.CreateTextFile(FSO.GetParentFolderName(g_strActiveVBProjectName) & Application.PathSeparator & STRCONFIGFILENAME)
-        
-        '// Add import and export locations
-        fsoFile.WriteLine "ImportFrom:" & shtConfig.Range("rImportFrom")
-        fsoFile.WriteLine "ExportTo:" & shtConfig.Range("rExportTo")
-        
-        '// For each module form etc, add the name to the modFileList Module
-        For Each comComponent In prjActVBProject.VBComponents
-            Select Case comComponent.Type
-                Case Is = vbext_ct_StdModule
-                     fsoFile.WriteLine fComponentTypeToString(vbext_ct_StdModule) & ": " & comComponent.Name
-                Case Is = vbext_ct_ClassModule
-                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_ClassModule) & ": " & comComponent.Name
-                Case Is = vbext_ct_MSForm
-                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_MSForm) & ": " & comComponent.Name
-                Case Is = vbext_ct_ActiveXDesigner
-                    fsoFile.WriteLine fComponentTypeToString(vbext_ct_ActiveXDesigner) & ": " & comComponent.Name
-                Case Is = vbext_ct_Document
-                    '// determine id ThisWorkbook or not
-                    If comComponent.Properties(30).Name = "IsAddin" Then
-                        fsoFile.WriteLine fComponentTypeToString(vbext_ct_Document) & ": " & comComponent.Name
-                    Else
-                        strDocumentName = CleanIllegalCharacters(comComponent.Properties(7).Value)
-                        fsoFile.WriteLine fComponentTypeToString(vbext_ct_Document) & ": " & comComponent.Name & "[" & strDocumentName & "]" '<ActualSheet name
-                    End If
-            End Select
-        Next
-        
-    Else '// add details to module modFileList
-        On Error Resume Next
-        Set modFileList = prjActVBProject.VBComponents("modFileList")
-        On Error GoTo catchError
-        
-        If modFileList Is Nothing Then
-            '// module does not already exist
-        Else
-            '// module already exists, so first remove it
-            prjActVBProject.VBComponents.Remove modFileList
+    Set prjActProj = Application.VBE.ActiveVBProject
+    If prjActProj Is Nothing Then Exit Sub
+
+    Set dictConfig = New Dictionary
+
+    '// Collect the name of each module, form, etc.
+    Set dictModulePaths = New Dictionary
+    For Each comModule In prjActProj.VBComponents
+
+        strFileExt = vbNullString
+        Select Case comModule.Type
+            Case vbext_ct_StdModule
+                strFileExt = "bas"
+            Case vbext_ct_ClassModule, vbext_ct_Document
+                strFileExt = "cls"
+            Case vbext_ct_MSForm
+                strFileExt = "frm"
+        End Select
+
+        If Not strFileExt = vbNullString Then
+            dictModulePaths.Add comModule.Name, comModule.Name & "." & strFileExt
         End If
-    
-        '// Add module
-        Set modFileList = prjActVBProject.VBComponents.Add(vbext_ct_StdModule)
-        modFileList.Name = "modFileList"
-    
-        With modFileList.CodeModule
-            .AddFromString ("'DO NOT DELETE THIS MODULE")
-    
-            '// For each module form etc, add the name to the modFileList Module
-            For Each comComponent In prjActVBProject.VBComponents
-                Select Case comComponent.Type
-                Case Is = vbext_ct_StdModule
-                    If UCase(comComponent.Name) <> UCase("modFileList") Then
-                        .AddFromString ("'Module: " & comComponent.Name)
-                    End If
-                Case Is = vbext_ct_ClassModule
-                    .AddFromString ("'Class: " & comComponent.Name)
-                Case Is = vbext_ct_MSForm
-                    .AddFromString ("'Form: " & comComponent.Name)
-                Case Is = vbext_ct_ActiveXDesigner
-                    .AddFromString ("'Designer: " & comComponent.Name)
-                End Select
-            Next
-        End With
-    
-    End If
-    
+
+    Next comModule
+    dictConfig.Add STR_CONFIGKEY_MODULEPATHS, dictModulePaths
+
+    '// Collect the references
+    Set collReferences = New Collection
+    For Each refReference In prjActProj.References
+
+        If Not refReference.BuiltIn Then
+            Set dictReferenceConfig = New Dictionary
+            dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_NAME, refReference.Name
+            dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_DESCRIPTION, refReference.Description
+
+            If refReference.Type = vbext_rk_TypeLib Then
+                dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_GUID, refReference.GUID
+                dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_MAJOR, refReference.Major
+                dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_MINOR, refReference.Minor
+            Else
+                dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_PATH, refReference.FullPath
+            End If
+
+            collReferences.Add dictReferenceConfig
+        End If
+
+    Next refReference
+    dictConfig.Add STR_CONFIGKEY_REFERENCES, collReferences
+
+    '// Write config to JSON config file
+    WriteConfigFile prjActProj, dictConfig
+
 exitSub:
     Exit Sub
 
 catchError:
     MsgBox "Error building file list" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.MakeFileList"
-    
+
     '// reset the ide menu
     Call auto_close
     Call auto_open
-    
+
     GoTo exitSub
 
 End Sub
 
 
-Sub ExportFiles()
+Public Sub Export()
 
-    Dim prjActVBProject     As VBProject
-    Dim modFileList         As VBComponent
+    Dim prjActProj          As VBProject
+
+    Dim dictConfig          As Dictionary
+    Dim dictModulePaths     As Dictionary
+    Dim collConfigRefs      As Collection
+    Dim dictDeclaredRef     As Dictionary
+
+    Dim varModuleName       As Variant
     Dim strModuleName       As String
-    Dim intModRowCounter    As Integer
-    Dim FSO                 As New Scripting.FileSystemObject
-    Dim fsoFile             As Scripting.TextStream
-    Dim strLine             As String
-    Dim strDocType          As String
-    
-    Dim modTemp             As VBIDE.CodeModule
-    
+    Dim strModulePath       As String
+    Dim comModule           As VBComponent
+
     On Error GoTo ErrHandler
-    
-    '// if checked make file list
-    
-        
-    If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
-    Set prjActVBProject = Application.VBE.ActiveVBProject
-    
-    '// determine if  the list needs to be in a module or txt file
-    If g_blnMakeConfFile Then
-        '// check that .conf file exists
-        With FSO
-            If Not .FileExists(g_strConfigFilePath) Then
-                MsgBox "You need to create modFileList before you can export files!"
-                Exit Sub
-            End If
-        End With
-        
-        '// open the .conf file
-        Set fsoFile = FSO.OpenTextFile(g_strConfigFilePath, ForReading)
-        
-        '// loop through each object listed in the .conf file and export with file extension
-        Do Until fsoFile.AtEndOfStream
-            strLine = fsoFile.ReadLine
-            
-            Select Case Left(strLine, InStr(strLine, ": "))
-                Case Is = "Document Module:"
-                    strModuleName = Right(strLine, Len(strLine) - 17) '// Remove Document Module:
-                    If InStr(1, strLine, "[") <> 0 Then
-                        strModuleName = Mid(strModuleName, 1, InStr(1, strModuleName, "[") - 1) '// Remove >Name
-                    End If
-                    '// this is taken from workbook and worksheet
-                    Select Case prjActVBProject.VBComponents(strModuleName).Properties(4).Name
-                        Case Is = "AcceptLabelsInFormulas" '// Workbook
-                            strDocType = ".wbk"
-                        Case Is = "CodeName" '// Worksheet
-                            strDocType = ".sht"
-                    End Select
-                    
-                    Set modTemp = prjActVBProject.VBComponents(strModuleName).CodeModule
-                    modTemp.Parent.Name = strModuleName & "_temp"
-                    prjActVBProject.VBComponents(modTemp.Parent.Name).Export (g_strExportTo & strModuleName & strDocType)
-                    modTemp.Parent.Name = strModuleName
-                    
-                    modTemp.DeleteLines 1, modTemp.CountOfLines '// remove code from module
-                
-                Case Is = "Code Module:"
-                    strModuleName = Right(strLine, Len(strLine) - 13)
-                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".bas")
-                    prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-                Case Is = "Class Module:"
-                    strModuleName = Right(strLine, Len(strLine) - 14)
-                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".cls")
-                    prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-                Case Is = "UserForm:"
-                    strModuleName = Right(strLine, Len(strLine) - 10)
-                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".frm")
-                    prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-            End Select
-            
-        Loop
-        
-    Else
-    
-        '// Check modFileList module exists
-        On Error Resume Next
-        Set modFileList = prjActVBProject.VBComponents("modFileList")
-        On Error GoTo ErrHandler
-    
-        '// If modFileList module doesnt exist, you need to warn user then exit sub
-        If modFileList Is Nothing Then
-            MsgBox "You need to create modFileList before you can export files!"
-            Exit Sub
+
+    Set prjActProj = Application.VBE.ActiveVBProject
+    If prjActProj Is Nothing Then Exit Sub
+
+    '// Read config file and parse it to construct the Config object.
+    Set dictConfig = ReadConfigFile(prjActProj)
+
+    '// Export each module listed in the config file to it's designated location
+    Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
+    For Each varModuleName In dictModulePaths.Keys
+
+        strModuleName = varModuleName
+        strModulePath = dictModulePaths(strModuleName)
+        strModulePath = EvaluatePath(prjActProj, strModulePath)
+        Set comModule = prjActProj.VBComponents(strModuleName)
+
+        comModule.Export strModulePath
+
+        If comModule.Type = vbext_ct_Document Then
+            comModule.CodeModule.DeleteLines 1, comModule.CodeModule.CountOfLines
+        Else
+            prjActProj.VBComponents.Remove comModule
         End If
-    
-        With modFileList.CodeModule
-            '// loop through each module name listed in modFileList and import the associated module
-            For intModRowCounter = 1 To .CountOfDeclarationLines
-                Select Case Left(.Lines(intModRowCounter, 1), InStr(.Lines(intModRowCounter, 1), ": "))
-                Case Is = "'Module:"
-                    strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 9)
-                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".bas")
-                    If UCase(strModuleName) <> UCase("modFileList") Then
-                        prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-                    End If
-                Case Is = "'Class:"
-                    strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 8)
-                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".cls")
-                    prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-                Case Is = "'Form:"
-                    strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 7)
-                    prjActVBProject.VBComponents(strModuleName).Export (g_strExportTo & strModuleName & ".frm")
-                    prjActVBProject.VBComponents.Remove prjActVBProject.VBComponents(strModuleName)
-                End Select
-            Next intModRowCounter
-        End With
-    
-    End If
-    
-    MsgBox "Finished exporting " & prjActVBProject.Name, vbInformation
+
+    Next varModuleName
+
+    '// For each reference listed in the config file, delete the references in the project
+    Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
+    For Each dictDeclaredRef In collConfigRefs
+
+        If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
+            prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
+        End If
+
+    Next dictDeclaredRef
 
 exitSub:
     Exit Sub
@@ -244,128 +161,68 @@ exitSub:
 ErrHandler:
     MsgBox "Error in Exporting Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.ExportFiles"
-    
+
     Call auto_close
     Call auto_open
-    
+
     GoTo exitSub
-    
+
 End Sub
 
 
-Sub ImportFiles()
+Public Sub Import()
 
-    Dim prjActVBProject     As VBProject
-    Dim modFileList         As VBComponent
+    Dim prjActProj          As VBProject
+
+    Dim dictConfig          As Dictionary
+    Dim dictModulePaths     As Dictionary
+    Dim collConfigRefs      As Collection
+    Dim dictDeclaredRef     As Dictionary
+
+    Dim varModuleName       As Variant
     Dim strModuleName       As String
-    Dim strDocumentName     As String
-    Dim intModRowCounter    As Integer
-    Dim FSO                 As New Scripting.FileSystemObject
-    Dim fsoFile             As Scripting.TextStream
-    Dim strLine             As String
-    
-    Dim modCodeCopy         As VBIDE.CodeModule
-    Dim modCodePaste        As VBIDE.CodeModule
-    Dim modTemp             As VBComponent
+    Dim strModulePath       As String
 
     On Error GoTo catchError
 
+    Set prjActProj = Application.VBE.ActiveVBProject
     If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
-    Set prjActVBProject = Application.VBE.ActiveVBProject
-    
-    '// determine if  the list needs to be in a module or txt file
-    If g_blnMakeConfFile Then
-        '// check that .conf file exists
-        With FSO
-            If Not .FileExists(g_strConfigFilePath) Then
-                MsgBox "You need to create modFileList before you can import files!"
-                Exit Sub
-            End If
-        End With
-        
-        '// open the .conf file
-        Set fsoFile = FSO.OpenTextFile(g_strConfigFilePath, ForReading)
-        
-        '// loop through each object listed in the .conf file and export with file extension
-        Do Until fsoFile.AtEndOfStream
-            strLine = fsoFile.ReadLine
-            
-            Select Case Left(strLine, InStr(strLine, ": "))
-                Case Is = "Document Module:"
-                    strModuleName = Right(strLine, Len(strLine) - 17)
-                    '// this is taken from workbook and worksheet
-                    If InStr(1, strModuleName, "[") > 0 Then
-                        strModuleName = Left(strModuleName, InStr(1, strModuleName, "[") - 1)
-                        strDocumentName = CleanIllegalCharacters(Mid(strLine, InStr(1, strLine, "["), InStrRev(strLine, "[")))
-                    End If
-                    
-                    Select Case prjActVBProject.VBComponents(strModuleName).Properties(4).Name
-                        Case Is = "AcceptLabelsInFormulas" '// AcceptLabelsInFormulas=Workbook
-                            prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".wbk")
-                        Case Is = "CodeName" '// CodeName=Worksheet
-                            prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".sht")
-                    End Select
 
-                    On Error Resume Next
-                    Set modTemp = prjActVBProject.VBComponents(strModuleName & "_temp")
-                    On Error GoTo catchError
-                
-                    Set modCodeCopy = prjActVBProject.VBComponents(modTemp.Name).CodeModule
-                    Set modCodePaste = prjActVBProject.VBComponents(strModuleName).CodeModule
-                    
-                    modCodePaste.DeleteLines 1, modCodePaste.CountOfLines
-                    
-                    If modCodeCopy.CountOfLines > 0 Then
-                        modCodePaste.AddFromString modCodeCopy.Lines(1, modCodeCopy.CountOfLines)
-                    End If
-                    
-                    '// module already exists, so first remove it
-                    prjActVBProject.VBComponents.Remove modTemp
+    Set dictConfig = ReadConfigFile(prjActProj)
 
-                Case Is = "Code Module:"
-                    strModuleName = Right(strLine, Len(strLine) - 13)
-                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".bas")
-                Case Is = "Class Module:"
-                    strModuleName = Right(strLine, Len(strLine) - 14)
-                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".cls")
-                Case Is = "UserForm:"
-                    strModuleName = Right(strLine, Len(strLine) - 10)
-                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".frm")
-            End Select
-            
-        Loop
-    Else
-    
-        '// Check modFileList module exists
-        On Error Resume Next
-        Set modFileList = prjActVBProject.VBComponents("modFileList")
-        On Error GoTo catchError
-    
-        '// If modFileList module doesnt exist, you need to warn user then exit sub
-        If modFileList Is Nothing Then
-            MsgBox "You need to create modFileList before you can import files!"
-            Exit Sub
-        End If
-    
-        With modFileList.CodeModule
-            '// loop through each module name listed in modFileList and import the associated module
-            For intModRowCounter = 1 To .CountOfDeclarationLines
-                Select Case Left(.Lines(intModRowCounter, 1), InStr(.Lines(intModRowCounter, 1), ": "))
-                Case Is = "'Module:"
-                    strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 9)
-                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".bas")
-                Case Is = "'Class:"
-                    strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 8)
-                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".cls")
-                Case Is = "'Form:"
-                    strModuleName = Right(.Lines(intModRowCounter, 1), Len(.Lines(intModRowCounter, 1)) - 7)
-                    prjActVBProject.VBComponents.Import (g_strImportFrom & strModuleName & ".frm")
-                End Select
-            Next intModRowCounter
-        End With
+    If dictConfig.Exists(STR_CONFIGKEY_MODULEPATHS) Then
+        '// For each module path declared in the config file, import that module
+        '// overwritting any existing modules.
+        Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
+        For Each varModuleName In dictModulePaths.Keys
+
+            strModuleName = varModuleName
+            strModulePath = EvaluatePath(prjActProj, dictModulePaths(strModuleName))
+            ImportModule prjActProj, strModuleName, strModulePath
+
+        Next varModuleName
     End If
-    
-    MsgBox "Finished building " & prjActVBProject.Name, vbInformation
+
+    If dictConfig.Exists(STR_CONFIGKEY_REFERENCES) Then
+        '// Add each reference declared in the config file
+        Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
+        For Each dictDeclaredRef In collConfigRefs
+
+            If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
+                prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
+            End If
+
+            If dictDeclaredRef.Exists(STR_CONFIGKEY_REFERENCE_GUID) Then
+                prjActProj.References.AddFromGuid _
+                    dictDeclaredRef(STR_CONFIGKEY_REFERENCE_GUID), _
+                    dictDeclaredRef(STR_CONFIGKEY_REFERENCE_MAJOR), _
+                    dictDeclaredRef(STR_CONFIGKEY_REFERENCE_MINOR)
+            Else
+                prjActProj.References.AddFromFile dictDeclaredRef(STR_CONFIGKEY_REFERENCE_PATH)
+            End If
+
+        Next dictDeclaredRef
+    End If
 
 exitSub:
     Exit Sub
@@ -373,17 +230,152 @@ exitSub:
 catchError:
     MsgBox "Error in Importing Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
          , vbExclamation, "modImportExport.ImportFiles"
-    
+
     Call auto_close
     Call auto_open
-    
+
     GoTo exitSub
 
 End Sub
 
 
-Sub ConfigureExport()
-    frmConfigure.Show
+'// Import a VBA code module... how hard could it be right?
+Private Sub ImportModule(ByVal Project As VBProject, ByVal ModuleName As String, ByVal ModulePath As String)
+
+    Dim comNewImport        As VBComponent
+    Dim comExistingComp     As VBComponent
+    Dim modCodeCopy         As CodeModule
+    Dim modCodePaste        As CodeModule
+
+    Set comNewImport = Project.VBComponents.Import(ModulePath)
+    If comNewImport.Name <> ModuleName Then
+        If CollectionKeyExists(Project.VBComponents, ModuleName) Then
+
+            Set comExistingComp = Project.VBComponents(ModuleName)
+            If comExistingComp.Type = vbext_ct_Document Then
+
+                Set modCodeCopy = comNewImport.CodeModule
+                Set modCodePaste = comExistingComp.CodeModule
+                modCodePaste.DeleteLines 1, modCodePaste.CountOfLines
+                If modCodeCopy.CountOfLines > 0 Then
+                    modCodePaste.AddFromString modCodeCopy.Lines(1, modCodeCopy.CountOfLines)
+                End If
+                Project.VBComponents.Remove comNewImport
+
+            Else
+
+                Project.VBComponents.Remove comExistingComp
+                comNewImport.Name = ModuleName
+
+            End If
+        Else
+
+            comNewImport.Name = ModuleName
+
+        End If
+    End If
+
 End Sub
 
 
+'// Read an parse the config file for a project
+Private Function ReadConfigFile(ByVal Project As VBProject) As Dictionary
+
+    Dim strConfigFilePath   As String
+    Dim tsConfigStream      As Scripting.TextStream
+    Dim strConfigJson       As String
+    Dim FSO                 As Scripting.FileSystemObject
+
+    Set FSO = New Scripting.FileSystemObject
+
+    strConfigFilePath = ConfigFilePath(Project)
+    If Not FSO.FileExists(strConfigFilePath) Then
+        MsgBox "You need to create file list config file before you can import or export files!"
+        Exit Function
+    End If
+    Set tsConfigStream = FSO.OpenTextFile(strConfigFilePath, ForReading)
+    strConfigJson = tsConfigStream.ReadAll()
+    tsConfigStream.Close
+    Set ReadConfigFile = JsonConverter.ParseJson(strConfigJson)
+
+End Function
+
+
+'// Write a configuration to the config file for a project
+Private Sub WriteConfigFile(ByVal Project As VBProject, ByVal Config As Dictionary)
+
+    Dim FSO                 As Scripting.FileSystemObject
+    Dim tsConfigStream      As Scripting.TextStream
+    Dim strConfigFilePath   As String
+    Dim strConfigJson       As String
+
+    Set FSO = New Scripting.FileSystemObject
+
+    strConfigJson = JsonConverter.ConvertToJson(Config, vbTab)
+    strConfigFilePath = ConfigFilePath(Project)
+    Set tsConfigStream = FSO.CreateTextFile(strConfigFilePath, True)
+    tsConfigStream.Write strConfigJson
+    tsConfigStream.Close
+
+End Sub
+
+
+'// Config file path for a given VBProject
+Private Function ConfigFilePath(ByVal Project As VBProject) As String
+
+    ConfigFilePath = ProjParentDirPath(Project) & STRCONFIGFILENAME
+
+End Function
+
+
+'// Parse a path name
+Private Function EvaluatePath(ByVal Project As VBProject, ByVal Path As String) As String
+
+    Dim FSO         As Scripting.FileSystemObject
+    Dim BaseDir     As String
+
+    Set FSO = New Scripting.FileSystemObject
+
+    '// Tack on the BaseDir if the Path is relative
+    BaseDir = SourceDirPath(Project)
+    If FSO.GetDriveName(Path) = vbNullString Then
+        '// Assume path is relative
+        EvaluatePath = FSO.BuildPath(BaseDir, Path)
+    Else
+        '// Assume path is absolute
+        EvaluatePath = Path
+    End If
+
+    '// Resolve any parts of the path such as '..' and '.'
+    EvaluatePath = FSO.GetAbsolutePathName(EvaluatePath)
+
+End Function
+
+
+'// Path of the VBA source directory for a given VBProject
+Private Function SourceDirPath(ByVal Project As VBProject) As String
+
+    SourceDirPath = ProjParentDirPath(Project)
+
+End Function
+
+
+'// The parent directory path for a given VBProject
+Private Function ProjParentDirPath(ByVal Project As VBProject) As String
+
+    Dim FSO As Scripting.FileSystemObject
+    Set FSO = New Scripting.FileSystemObject
+
+    ProjParentDirPath = FSO.GetParentFolderName(Project.Filename) & Application.PathSeparator
+
+End Function
+
+
+Private Function CollectionKeyExists(ByVal coll As Object, ByVal key As String) As Boolean
+
+    On Error Resume Next
+    coll (key)
+    CollectionKeyExists = (Err.Number = 0)
+    On Error GoTo 0
+
+End Function

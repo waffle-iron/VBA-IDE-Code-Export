@@ -7,21 +7,24 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-'// Add reference for: Microsoft Visual Basic For Applications Extensibility 5.3
-
 Option Explicit
+
+'// Add references for :
+'//     Microsoft Visual Basic For Applications Extensibility 5.3
 
 Public WithEvents EvtHandler As VBIDE.CommandBarEvents
 Attribute EvtHandler.VB_VarHelpID = -1
 
-Private Sub EvtHandler_Click(ByVal CommandBarControl As Object, Handled As Boolean, CancelDefault As Boolean)
+
+Private Sub EvtHandler_Click(ByVal CommandBarControl As Object, ByRef Handled As Boolean, ByRef CancelDefault As Boolean)
+
     On Error Resume Next
 
     '// Run the code specified in the object's OnAction property.
-    Call CollectSettings
     Application.Run CommandBarControl.OnAction
 
     '// Indicate to the Events object that we've successfully handled the event.
     Handled = True
     CancelDefault = True
+
 End Sub

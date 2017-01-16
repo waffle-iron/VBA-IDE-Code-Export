@@ -1,31 +1,61 @@
 # VBA IDE CodeExport
+
+[![The MIT License](https://img.shields.io/badge/license-MIT-orange.svg?style=flat-square)](http://opensource.org/licenses/MIT)
+
 For a while now I have used this code so that all the associated VBA files used in a VBA project (*.cls, *.bas, *.frm files) can be easily exported for use with a Version Control System.
 
 This is specifically for Excel, although the VBIDE extensibility can be used for all the MS Office suite.
 
-## Description
-On opening it will create a menu in the VBA IDE called 'Export for VCS' with the options 'Make File List', 'Import Files', 'Export Files' and 'Configure Export'.
+## Installing
 
-The default process for use is:
+1. Obtain a copy of the add-in by following the build instructions below.
+2. Save the add-in in your add-ins folder. Add-ins saved in your add-ins folder are loaded automatically.
+3. Finally, enable the add-in in Excel.
 
-1. Make a File List
-    - This will list all the objects in the project in a newly created module called 'modFileList'.
-2. Export the Files
-    - This will export the files listed in 'modFileList' to the root folder of the current project and remove all but the 'modFileList' module from the project.
-3. Import the files
-    - This uses the 'modFileList' module to build the project, all the files should be present to built the project.
+Optionally, set password protection to prevent the Add-In code annoying you in the VBE and to prevent accidental changes.
 
-Additional functionality is there to configure a .conf file that will export the project contents to that instead of the 'modFileList' leaving your project completely empty. This can also be configured to set the import and export file locations.
+## Usage
 
-## Build
-You will need to clone or download a zip of the project open an empty workbook in Excel then open the 'VBAIDECodeExport.xlam' add-in, you will be able to see the project from the VBA IDE [Alt+F11] pane of the new workbook you have just opened. The easiest way to do this is to drag and drop the components from file explorer to the VBA IDE
+The add-in will create a menu in the VBA IDE (the VBE) called `Export for VCS`. All controls for the add-in are found in this menu.
 
-![Import to IDE](https://raw.githubusercontent.com/spences10/VBA-IDE-Code-Export/master/screenshots/ImportFilesToVBAIDE.gif)
+### The configuration file
 
-Save and open again, the auto_open should take care of creating the VBA IDE menu options and you're good to go
+A file named `CodeExport.config.json` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make Config File` button in the `Export For VCS` menu will generate a new configuration file for the current active project based upon the contents of that project. Any existing configuration file will be overwritten. The JSON file format is used as the file format for the configuration file.
+
+The `Module Paths` property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file.
+
+The `References` property declares the references to libraries that your VBA modules require. These will be imported when the import action is used and will be removed when the export action is used.
+
+### Importing
+
+The `Import` button in the `Export For VCS` menu will:
+
+* Import all the modules specified in the configuration file from the file system into the Excel file. Existing modules will be overwritten.
+* Add all library references declared in the configuration file. Existing library references will be overwritten.
+
+
+### Exporting
+
+The `Export` button in the `Export For VCS` menu will:
+
+* Export all the modules specified in the configuration file from the Excel file into the appropriate places in the file system. Existing files will be overwritten.
+* Remove library references from the project which are declared in the configuration file.
+
+## Building
+
+1. Open the template file `VBA-IDE-Code-Export.xlsm`.
+2. Import the files specified in `CodeExport.config.json` (Tip: Use a previously installed copy of this Add-In).
+3. Compile project as a smoke test.
+5. Save as an Add-In.
 
 ## Contributing
 Please fork this repository and contribute back using pull requests.
 
 Any contributions, large or small, major features, bugfixes and integration tests are welcomed and appreciated but will be thoroughly reviewed and discussed.
 
+Please use the template file `VBA-IDE-Code-Export.xlsm` for working in, however don't commit the template file unless you are actually making a change to the template file. This helps with source control since merging an Excel file is not fun.
+
+## Roadmap
+
+- [ ] Add pretty ribbon UI
+- [ ] Save XL as XML
