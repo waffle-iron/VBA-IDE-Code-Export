@@ -155,8 +155,6 @@ Public Sub Export()
 
     Next dictDeclaredRef
 
-    MsgBox "Finished exporting " & prjActProj.Name, vbInformation
-
 exitSub:
     Exit Sub
 
@@ -225,8 +223,6 @@ Public Sub Import()
 
         Next dictDeclaredRef
     End If
-
-    MsgBox "Finished building " & prjActProj.Name, vbInformation
 
 exitSub:
     Exit Sub
