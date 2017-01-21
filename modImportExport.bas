@@ -37,7 +37,7 @@ Public Sub MakeConfigFile()
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If prjActProj Is Nothing Then Exit Sub
+    If prjActProj Is Nothing Then GoTo exitSub
 
     Set dictConfig = New Dictionary
 
@@ -121,7 +121,7 @@ Public Sub Export()
     On Error GoTo ErrHandler
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If prjActProj Is Nothing Then Exit Sub
+    If prjActProj Is Nothing Then GoTo exitSub
 
     '// Read config file and parse it to construct the Config object.
     Set dictConfig = ReadConfigFile(prjActProj)
@@ -190,7 +190,7 @@ Public Sub Import()
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
+    If Application.VBE.ActiveVBProject Is Nothing Then GoTo exitSub
 
     Set dictConfig = ReadConfigFile(prjActProj)
 
