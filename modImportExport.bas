@@ -37,7 +37,7 @@ Public Sub MakeConfigFile()
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If prjActProj Is Nothing Then Exit Sub
+    If prjActProj Is Nothing Then GoTo exitSub
 
     Set dictConfig = New Dictionary
 
@@ -121,39 +121,43 @@ Public Sub Export()
     On Error GoTo ErrHandler
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If prjActProj Is Nothing Then Exit Sub
+    If prjActProj Is Nothing Then GoTo exitSub
 
     '// Read config file and parse it to construct the Config object.
     Set dictConfig = ReadConfigFile(prjActProj)
 
-    '// Export each module listed in the config file to it's designated location
-    Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
-    For Each varModuleName In dictModulePaths.Keys
+    If dictConfig.Exists(STR_CONFIGKEY_MODULEPATHS) Then
+        '// Export each module listed in the module paths to it's designated location
+        Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
+        For Each varModuleName In dictModulePaths.Keys
+    
+            strModuleName = varModuleName
+            strModulePath = dictModulePaths(strModuleName)
+            strModulePath = EvaluatePath(prjActProj, strModulePath)
+            Set comModule = prjActProj.VBComponents(strModuleName)
+    
+            comModule.Export strModulePath
+    
+            If comModule.Type = vbext_ct_Document Then
+                comModule.CodeModule.DeleteLines 1, comModule.CodeModule.CountOfLines
+            Else
+                prjActProj.VBComponents.Remove comModule
+            End If
+    
+        Next varModuleName
+    End If
 
-        strModuleName = varModuleName
-        strModulePath = dictModulePaths(strModuleName)
-        strModulePath = EvaluatePath(prjActProj, strModulePath)
-        Set comModule = prjActProj.VBComponents(strModuleName)
-
-        comModule.Export strModulePath
-
-        If comModule.Type = vbext_ct_Document Then
-            comModule.CodeModule.DeleteLines 1, comModule.CodeModule.CountOfLines
-        Else
-            prjActProj.VBComponents.Remove comModule
-        End If
-
-    Next varModuleName
-
-    '// For each reference listed in the config file, delete the references in the project
-    Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
-    For Each dictDeclaredRef In collConfigRefs
-
-        If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
-            prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
-        End If
-
-    Next dictDeclaredRef
+    If dictConfig.Exists(STR_CONFIGKEY_REFERENCES) Then
+        '// For each reference listed in the config file, delete the references in the project
+        Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
+        For Each dictDeclaredRef In collConfigRefs
+    
+            If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
+                prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
+            End If
+    
+        Next dictDeclaredRef
+    End If
 
 exitSub:
     Exit Sub
@@ -186,7 +190,7 @@ Public Sub Import()
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
+    If Application.VBE.ActiveVBProject Is Nothing Then GoTo exitSub
 
     Set dictConfig = ReadConfigFile(prjActProj)
 
