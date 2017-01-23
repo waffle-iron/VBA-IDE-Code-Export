@@ -56,7 +56,9 @@ Public Sub MakeConfigFile()
         End Select
 
         If Not strFileExt = vbNullString Then
-            dictModulePaths.Add comModule.Name, comModule.Name & "." & strFileExt
+            If Not ModuleEmpty(comModule) Then
+                dictModulePaths.Add comModule.Name, comModule.Name & "." & strFileExt
+            End If
         End If
 
     Next comModule
@@ -273,6 +275,26 @@ Private Sub ImportModule(ByVal Project As VBProject, ByVal ModuleName As String,
     End If
 
 End Sub
+
+
+Private Function ModuleEmpty(ByVal comModule As VBComponent) As Boolean
+
+    Dim lngNumLines As Long
+    Dim lngCurLine As Long
+    Dim strCurLine As String
+
+    ModuleEmpty = True
+
+    lngNumLines = comModule.CodeModule.CountOfLines
+    For lngCurLine = 1 To lngNumLines
+        strCurLine = comModule.CodeModule.Lines(lngCurLine, 1)
+        If Not (strCurLine = "Option Explicit" Or strCurLine = "") Then
+            ModuleEmpty = False
+            Exit Function
+        End If
+    Next lngCurLine
+
+End Function
 
 
 '// Read an parse the config file for a project
