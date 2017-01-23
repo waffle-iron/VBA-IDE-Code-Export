@@ -10,7 +10,8 @@ This is specifically for Excel, although the VBIDE extensibility can be used for
 
 1. Obtain a copy of the add-in by following the build instructions below.
 2. Save the add-in in your add-ins folder. Add-ins saved in your add-ins folder are loaded automatically.
-3. Finally, enable the add-in in Excel.
+3. Enable the add-in in Excel.
+4. Check the `Trust access to the VBA project model` check box located in `Trust Centre -> Trust Centre Settings -> Macro Settings -> Trust access to the VBA project model`.
 
 Optionally, set password protection to prevent the Add-In code annoying you in the VBE and to prevent accidental changes.
 

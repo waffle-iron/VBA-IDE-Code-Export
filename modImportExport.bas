@@ -37,7 +37,7 @@ Public Sub MakeConfigFile()
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If prjActProj Is Nothing Then Exit Sub
+    If prjActProj Is Nothing Then GoTo exitSub
 
     Set dictConfig = New Dictionary
 
@@ -56,7 +56,9 @@ Public Sub MakeConfigFile()
         End Select
 
         If Not strFileExt = vbNullString Then
-            dictModulePaths.Add comModule.Name, comModule.Name & "." & strFileExt
+            If Not ModuleEmpty(comModule) Then
+                dictModulePaths.Add comModule.Name, comModule.Name & "." & strFileExt
+            End If
         End If
 
     Next comModule
@@ -92,13 +94,10 @@ exitSub:
     Exit Sub
 
 catchError:
-    MsgBox "Error building file list" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
-         , vbExclamation, "modImportExport.MakeFileList"
-
-    '// reset the ide menu
-    Call auto_close
-    Call auto_open
-
+    If HandleCrash(Err.Number, Err.Description, Err.Source) Then
+        Stop
+        Resume
+    End If
     GoTo exitSub
 
 End Sub
@@ -121,50 +120,52 @@ Public Sub Export()
     On Error GoTo ErrHandler
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If prjActProj Is Nothing Then Exit Sub
+    If prjActProj Is Nothing Then GoTo exitSub
 
     '// Read config file and parse it to construct the Config object.
     Set dictConfig = ReadConfigFile(prjActProj)
 
-    '// Export each module listed in the config file to it's designated location
-    Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
-    For Each varModuleName In dictModulePaths.Keys
+    If dictConfig.Exists(STR_CONFIGKEY_MODULEPATHS) Then
+        '// Export each module listed in the module paths to it's designated location
+        Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
+        For Each varModuleName In dictModulePaths.Keys
+    
+            strModuleName = varModuleName
+            strModulePath = dictModulePaths(strModuleName)
+            strModulePath = EvaluatePath(prjActProj, strModulePath)
+            Set comModule = prjActProj.VBComponents(strModuleName)
+    
+            comModule.Export strModulePath
+    
+            If comModule.Type = vbext_ct_Document Then
+                comModule.CodeModule.DeleteLines 1, comModule.CodeModule.CountOfLines
+            Else
+                prjActProj.VBComponents.Remove comModule
+            End If
+    
+        Next varModuleName
+    End If
 
-        strModuleName = varModuleName
-        strModulePath = dictModulePaths(strModuleName)
-        strModulePath = EvaluatePath(prjActProj, strModulePath)
-        Set comModule = prjActProj.VBComponents(strModuleName)
-
-        comModule.Export strModulePath
-
-        If comModule.Type = vbext_ct_Document Then
-            comModule.CodeModule.DeleteLines 1, comModule.CodeModule.CountOfLines
-        Else
-            prjActProj.VBComponents.Remove comModule
-        End If
-
-    Next varModuleName
-
-    '// For each reference listed in the config file, delete the references in the project
-    Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
-    For Each dictDeclaredRef In collConfigRefs
-
-        If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
-            prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
-        End If
-
-    Next dictDeclaredRef
+    If dictConfig.Exists(STR_CONFIGKEY_REFERENCES) Then
+        '// For each reference listed in the config file, delete the references in the project
+        Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
+        For Each dictDeclaredRef In collConfigRefs
+    
+            If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
+                prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
+            End If
+    
+        Next dictDeclaredRef
+    End If
 
 exitSub:
     Exit Sub
 
 ErrHandler:
-    MsgBox "Error in Exporting Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
-         , vbExclamation, "modImportExport.ExportFiles"
-
-    Call auto_close
-    Call auto_open
-
+    If HandleCrash(Err.Number, Err.Description, Err.Source) Then
+        Stop
+        Resume
+    End If
     GoTo exitSub
 
 End Sub
@@ -186,7 +187,7 @@ Public Sub Import()
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If Application.VBE.ActiveVBProject Is Nothing Then Exit Sub
+    If Application.VBE.ActiveVBProject Is Nothing Then GoTo exitSub
 
     Set dictConfig = ReadConfigFile(prjActProj)
 
@@ -228,12 +229,10 @@ exitSub:
     Exit Sub
 
 catchError:
-    MsgBox "Error in Importing Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
-         , vbExclamation, "modImportExport.ImportFiles"
-
-    Call auto_close
-    Call auto_open
-
+    If HandleCrash(Err.Number, Err.Description, Err.Source) Then
+        Stop
+        Resume
+    End If
     GoTo exitSub
 
 End Sub
@@ -276,6 +275,26 @@ Private Sub ImportModule(ByVal Project As VBProject, ByVal ModuleName As String,
     End If
 
 End Sub
+
+
+Private Function ModuleEmpty(ByVal comModule As VBComponent) As Boolean
+
+    Dim lngNumLines As Long
+    Dim lngCurLine As Long
+    Dim strCurLine As String
+
+    ModuleEmpty = True
+
+    lngNumLines = comModule.CodeModule.CountOfLines
+    For lngCurLine = 1 To lngNumLines
+        strCurLine = comModule.CodeModule.Lines(lngCurLine, 1)
+        If Not (strCurLine = "Option Explicit" Or strCurLine = "") Then
+            ModuleEmpty = False
+            Exit Function
+        End If
+    Next lngCurLine
+
+End Function
 
 
 '// Read an parse the config file for a project
@@ -377,5 +396,18 @@ Private Function CollectionKeyExists(ByVal coll As Object, ByVal key As String) 
     coll (key)
     CollectionKeyExists = (Err.Number = 0)
     On Error GoTo 0
+
+End Function
+
+Private Function HandleCrash(ByVal ErrNumber As Long, ByVal ErrDesc As String, ByVal ErrSource As String) As Boolean
+
+    Dim UserAction As Integer
+
+    UserAction = MsgBox( _
+        Prompt = "An unexpected problem occured, would you like to debug?", _
+        Buttons = vbYesNo, _
+        Title = "Unexpected problem")
+
+    HandleCrash = UserAction = vbYes
 
 End Function
