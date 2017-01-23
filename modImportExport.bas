@@ -92,13 +92,10 @@ exitSub:
     Exit Sub
 
 catchError:
-    MsgBox "Error building file list" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
-         , vbExclamation, "modImportExport.MakeFileList"
-
-    '// reset the ide menu
-    Call auto_close
-    Call auto_open
-
+    If HandleCrash(Err.Number, Err.Description, Err.Source) Then
+        Stop
+        Resume
+    End If
     GoTo exitSub
 
 End Sub
@@ -163,12 +160,10 @@ exitSub:
     Exit Sub
 
 ErrHandler:
-    MsgBox "Error in Exporting Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
-         , vbExclamation, "modImportExport.ExportFiles"
-
-    Call auto_close
-    Call auto_open
-
+    If HandleCrash(Err.Number, Err.Description, Err.Source) Then
+        Stop
+        Resume
+    End If
     GoTo exitSub
 
 End Sub
@@ -232,12 +227,10 @@ exitSub:
     Exit Sub
 
 catchError:
-    MsgBox "Error in Importing Files" & vbCrLf & "Error Number: " & Err.Number & vbCrLf & Err.Description _
-         , vbExclamation, "modImportExport.ImportFiles"
-
-    Call auto_close
-    Call auto_open
-
+    If HandleCrash(Err.Number, Err.Description, Err.Source) Then
+        Stop
+        Resume
+    End If
     GoTo exitSub
 
 End Sub
@@ -381,5 +374,18 @@ Private Function CollectionKeyExists(ByVal coll As Object, ByVal key As String) 
     coll (key)
     CollectionKeyExists = (Err.Number = 0)
     On Error GoTo 0
+
+End Function
+
+Private Function HandleCrash(ByVal ErrNumber As Long, ByVal ErrDesc As String, ByVal ErrSource As String) As Boolean
+
+    Dim UserAction As Integer
+
+    UserAction = MsgBox( _
+        Prompt = "An unexpected problem occured, would you like to debug?", _
+        Buttons = vbYesNo, _
+        Title = "Unexpected problem")
+
+    HandleCrash = UserAction = vbYes
 
 End Function
