@@ -1,4 +1,5 @@
 {
+	"VBAProject Name": "CodeExport",
 	"Module Paths": {
 		"clsVBECmdHandler": "clsVBECmdHandler.cls",
 		"JsonConverter": "JsonConverter.bas",

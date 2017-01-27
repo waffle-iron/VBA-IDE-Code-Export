@@ -17,6 +17,7 @@ Private Const STR_CONFIGKEY_REFERENCE_GUID          As String = "GUID"
 Private Const STR_CONFIGKEY_REFERENCE_MAJOR         As String = "Major"
 Private Const STR_CONFIGKEY_REFERENCE_MINOR         As String = "Minor"
 Private Const STR_CONFIGKEY_REFERENCE_PATH          As String = "Path"
+Private Const STR_CONFIGKEY_PROJECTNAME             As String = "VBAProject Name"
 
 Private Const ForReading                As Integer = 1
 
@@ -129,20 +130,20 @@ Public Sub Export()
         '// Export each module listed in the module paths to it's designated location
         Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
         For Each varModuleName In dictModulePaths.Keys
-    
+
             strModuleName = varModuleName
             strModulePath = dictModulePaths(strModuleName)
             strModulePath = EvaluatePath(prjActProj, strModulePath)
             Set comModule = prjActProj.VBComponents(strModuleName)
-    
+
             comModule.Export strModulePath
-    
+
             If comModule.Type = vbext_ct_Document Then
                 comModule.CodeModule.DeleteLines 1, comModule.CodeModule.CountOfLines
             Else
                 prjActProj.VBComponents.Remove comModule
             End If
-    
+
         Next varModuleName
     End If
 
@@ -150,11 +151,11 @@ Public Sub Export()
         '// For each reference listed in the config file, delete the references in the project
         Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
         For Each dictDeclaredRef In collConfigRefs
-    
+
             If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
                 prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
             End If
-    
+
         Next dictDeclaredRef
     End If
 
@@ -183,6 +184,7 @@ Public Sub Import()
     Dim varModuleName       As Variant
     Dim strModuleName       As String
     Dim strModulePath       As String
+    Dim strProjName         As String
 
     On Error GoTo catchError
 
@@ -223,6 +225,12 @@ Public Sub Import()
             End If
 
         Next dictDeclaredRef
+    End If
+
+    If dictConfig.Exists(STR_CONFIGKEY_PROJECTNAME) Then
+        '// Set the project name
+        strProjName = dictConfig(STR_CONFIGKEY_PROJECTNAME)
+        prjActProj.Name = strProjName
     End If
 
 exitSub:
