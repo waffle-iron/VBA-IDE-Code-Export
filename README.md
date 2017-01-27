@@ -27,7 +27,7 @@ The `Module Paths` property specifies a mapping of VBA modules to their location
 
 The `References` property declares the references to libraries that your VBA modules require. These will be imported when the import action is used and will be removed when the export action is used.
 
-The `VBAProject Name` property declares declares the VBAProject name. This will be imported with the import action is used.
+The `VBAProject Name` property declares declares the VBAProject name. This will be imported when the import action is used.
 
 ### Importing
 
