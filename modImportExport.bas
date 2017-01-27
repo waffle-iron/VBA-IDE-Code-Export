@@ -18,6 +18,7 @@ Private Const STR_CONFIGKEY_REFERENCE_GUID          As String = "GUID"
 Private Const STR_CONFIGKEY_REFERENCE_MAJOR         As String = "Major"
 Private Const STR_CONFIGKEY_REFERENCE_MINOR         As String = "Minor"
 Private Const STR_CONFIGKEY_REFERENCE_PATH          As String = "Path"
+Private Const STR_CONFIGKEY_PROJECTNAME             As String = "VBAProject Name"
 
 Private Const ForReading                As Integer = 1
 
@@ -191,6 +192,7 @@ Public Sub Import()
     Dim varModuleName       As Variant
     Dim strModuleName       As String
     Dim strModulePath       As String
+    Dim strProjName         As String
     Dim strBasePath         As String
 
     On Error GoTo catchError
@@ -238,6 +240,12 @@ Public Sub Import()
             End If
 
         Next dictDeclaredRef
+    End If
+
+    If dictConfig.Exists(STR_CONFIGKEY_PROJECTNAME) Then
+        '// Set the project name
+        strProjName = dictConfig(STR_CONFIGKEY_PROJECTNAME)
+        prjActProj.Name = strProjName
     End If
 
 exitSub:
