@@ -129,20 +129,21 @@ Public Sub Export()
         '// Export each module listed in the module paths to it's designated location
         Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
         For Each varModuleName In dictModulePaths.Keys
-    
+
             strModuleName = varModuleName
             strModulePath = dictModulePaths(strModuleName)
             strModulePath = EvaluatePath(prjActProj, strModulePath)
             Set comModule = prjActProj.VBComponents(strModuleName)
-    
+
+            EnsurePath strModulePath
             comModule.Export strModulePath
-    
+
             If comModule.Type = vbext_ct_Document Then
                 comModule.CodeModule.DeleteLines 1, comModule.CodeModule.CountOfLines
             Else
                 prjActProj.VBComponents.Remove comModule
             End If
-    
+
         Next varModuleName
     End If
 
@@ -150,11 +151,11 @@ Public Sub Export()
         '// For each reference listed in the config file, delete the references in the project
         Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
         For Each dictDeclaredRef In collConfigRefs
-    
+
             If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
                 prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
             End If
-    
+
         Next dictDeclaredRef
     End If
 
@@ -369,6 +370,29 @@ Private Function EvaluatePath(ByVal Project As VBProject, ByVal Path As String) 
     EvaluatePath = FSO.GetAbsolutePathName(EvaluatePath)
 
 End Function
+
+
+'// Ensure path to a file exists
+Private Sub EnsurePath(ByVal Path As String)
+
+    Dim FSO As Scripting.FileSystemObject
+    Dim strParentPath As String
+
+    Set FSO = New Scripting.FileSystemObject
+    strParentPath = FSO.GetParentFolderName(Path)
+
+    If Not strParentPath = "" Then
+        EnsurePath strParentPath
+        If Not FSO.FolderExists(strParentPath) Then
+            If FSO.FileExists(strParentPath) Then
+                Err.Raise vbObjectError + 1, "modImportExport:EnsurePath", "A file exists where a folder needs to be: " & strParentPath
+            Else
+                FSO.CreateFolder (strParentPath)
+            End If
+        End If
+    End If
+
+End Sub
 
 
 '// Path of the VBA source directory for a given VBProject
