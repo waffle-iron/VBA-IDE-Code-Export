@@ -1,12 +1,6 @@
 Attribute VB_Name = "modMenu"
 Option Explicit
 
-'// Add references for :
-'//     Microsoft Visual Basic For Applications Extensibility 5.3
-'//     Microsoft Scripting Runtime
-'// Also check the 'Trust access to the VBA project model check box', located...
-'// Trust Centre, Trust Centre Settings, Macro Settings, Trust access to the VBA project model
-
 Private MnuEvt      As clsVBECmdHandler
 Private EvtHandlers As New Collection
 

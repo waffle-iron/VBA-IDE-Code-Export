@@ -1,12 +1,6 @@
 Attribute VB_Name = "modImportExport"
 Option Explicit
 
-'// Add references for :
-'//     Microsoft Visual Basic For Applications Extensibility 5.3
-'//     Microsoft Scripting Runtime
-'// Also check the 'Trust access to the VBA project model check box', located...
-'// Trust Centre, Trust Centre Settings, Macro Settings, Trust access to the VBA project model
-
 Private Const STRCONFIGFILENAME         As String = "CodeExport.config.json"
 
 Private Const STR_CONFIGKEY_MODULEPATHS             As String = "Module Paths"
@@ -198,7 +192,7 @@ Public Sub Import()
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If Application.VBE.ActiveVBProject Is Nothing Then GoTo exitSub
+    If prjActProj Is Nothing Then GoTo exitSub
 
     Set dictConfig = ReadConfigFile(prjActProj)
 
@@ -300,6 +294,7 @@ Private Sub ImportModule(ByVal Project As VBProject, ByVal ModuleName As String,
 End Sub
 
 
+'// Check if a code module is effectively empty
 Private Function ModuleEmpty(ByVal comModule As VBComponent) As Boolean
 
     Dim lngNumLines As Long
@@ -437,6 +432,7 @@ Private Function ProjParentDirPath(ByVal Project As VBProject) As String
 End Function
 
 
+'// Hack to check if Collection key exists
 Private Function CollectionKeyExists(ByVal coll As Object, ByVal key As String) As Boolean
 
     On Error Resume Next
@@ -447,6 +443,7 @@ Private Function CollectionKeyExists(ByVal coll As Object, ByVal key As String) 
 End Function
 
 
+'// Display a friendly dialog and return true if user wants to debug
 Private Function HandleCrash(ByVal ErrNumber As Long, ByVal ErrDesc As String, ByVal ErrSource As String) As Boolean
 
     Dim UserAction As Integer
