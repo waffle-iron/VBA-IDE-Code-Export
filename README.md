@@ -27,12 +27,15 @@ The `Module Paths` property specifies a mapping of VBA modules to their location
 
 The `References` property declares the references to libraries that your VBA modules require. These will be imported when the import action is used and will be removed when the export action is used.
 
+The `VBAProject Name` property declares declares the VBAProject name. This will be imported with the import action is used.
+
 ### Importing
 
 The `Import` button in the `Export For VCS` menu will:
 
 * Import all the modules specified in the configuration file from the file system into the Excel file. Existing modules will be overwritten.
 * Add all library references declared in the configuration file. Existing library references will be overwritten.
+* Set the VBAProject name as declared in the configuration file.
 
 
 ### Exporting
