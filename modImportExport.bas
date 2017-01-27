@@ -404,9 +404,9 @@ Private Function HandleCrash(ByVal ErrNumber As Long, ByVal ErrDesc As String, B
     Dim UserAction As Integer
 
     UserAction = MsgBox( _
-        Prompt = "An unexpected problem occured, would you like to debug?", _
-        Buttons = vbYesNo, _
-        Title = "Unexpected problem")
+        Prompt:="An unexpected problem occured, would you like to debug?", _
+        Buttons:=vbYesNo, _
+        Title:="Unexpected problem")
 
     HandleCrash = UserAction = vbYes
 
