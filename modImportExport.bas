@@ -404,9 +404,15 @@ Private Function HandleCrash(ByVal ErrNumber As Long, ByVal ErrDesc As String, B
     Dim UserAction As Integer
 
     UserAction = MsgBox( _
-        Prompt = "An unexpected problem occured, would you like to debug?", _
-        Buttons = vbYesNo, _
-        Title = "Unexpected problem")
+        Prompt:= _
+            "An unexpected problem occured. Please report this to " & _
+            "https://github.com/spences10/VBA-IDE-Code-Export/issues" & vbNewLine & vbNewLine & _
+            "Error Number: " & ErrNumber & vbNewLine & _
+            "Error Description: " & ErrDesc & vbNewLine & _
+            "Error Source: " & ErrSource & vbNewLine & vbNewLine & _
+            "Would you like to debug?", _
+        Buttons:=vbYesNo + vbDefaultButton2, _
+        Title:="Unexpected problem")
 
     HandleCrash = UserAction = vbYes
 
