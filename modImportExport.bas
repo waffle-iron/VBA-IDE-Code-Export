@@ -10,6 +10,7 @@ Option Explicit
 Private Const STRCONFIGFILENAME         As String = "CodeExport.config.json"
 
 Private Const STR_CONFIGKEY_MODULEPATHS             As String = "Module Paths"
+Private Const STR_CONFIGKEY_BASEPATH                As String = "Base Path"
 Private Const STR_CONFIGKEY_REFERENCES              As String = "References"
 Private Const STR_CONFIGKEY_REFERENCE_NAME          As String = "Name"
 Private Const STR_CONFIGKEY_REFERENCE_DESCRIPTION   As String = "Description"
@@ -115,6 +116,7 @@ Public Sub Export()
     Dim varModuleName       As Variant
     Dim strModuleName       As String
     Dim strModulePath       As String
+    Dim strBasePath         As String
     Dim comModule           As VBComponent
 
     On Error GoTo ErrHandler
@@ -132,7 +134,12 @@ Public Sub Export()
     
             strModuleName = varModuleName
             strModulePath = dictModulePaths(strModuleName)
-            strModulePath = EvaluatePath(prjActProj, strModulePath)
+            If dictConfig.Exists(STR_CONFIGKEY_BASEPATH) Then
+                strBasePath = dictConfig(STR_CONFIGKEY_BASEPATH)
+            Else
+                strBasePath = ""
+            End If
+            strModulePath = EvaluatePath(prjActProj, strBasePath, strModulePath)
             Set comModule = prjActProj.VBComponents(strModuleName)
     
             comModule.Export strModulePath
@@ -183,6 +190,7 @@ Public Sub Import()
     Dim varModuleName       As Variant
     Dim strModuleName       As String
     Dim strModulePath       As String
+    Dim strBasePath         As String
 
     On Error GoTo catchError
 
@@ -198,7 +206,13 @@ Public Sub Import()
         For Each varModuleName In dictModulePaths.Keys
 
             strModuleName = varModuleName
-            strModulePath = EvaluatePath(prjActProj, dictModulePaths(strModuleName))
+            strModulePath = dictModulePaths(strModuleName)
+            If dictConfig.Exists(STR_CONFIGKEY_BASEPATH) Then
+                strBasePath = dictConfig(STR_CONFIGKEY_BASEPATH)
+            Else
+                strBasePath = ""
+            End If
+            strModulePath = EvaluatePath(prjActProj, strBasePath, strModulePath)
             ImportModule prjActProj, strModuleName, strModulePath
 
         Next varModuleName
@@ -348,21 +362,22 @@ End Function
 
 
 '// Parse a path name
-Private Function EvaluatePath(ByVal Project As VBProject, ByVal Path As String) As String
+Private Function EvaluatePath(ByVal Project As VBProject, ByVal BasePath As String, ByVal Path As String) As String
 
     Dim FSO         As Scripting.FileSystemObject
-    Dim BaseDir     As String
+    Dim PrjBaseDir  As String
+    Dim ConfigPath  As String
 
     Set FSO = New Scripting.FileSystemObject
-
+    ConfigPath = FSO.BuildPath(BasePath, Path)
     '// Tack on the BaseDir if the Path is relative
-    BaseDir = SourceDirPath(Project)
-    If FSO.GetDriveName(Path) = vbNullString Then
+    If FSO.GetDriveName(ConfigPath) = vbNullString Then
         '// Assume path is relative
-        EvaluatePath = FSO.BuildPath(BaseDir, Path)
+        PrjBaseDir = SourceDirPath(Project)
+        EvaluatePath = FSO.BuildPath(PrjBaseDir, ConfigPath)
     Else
         '// Assume path is absolute
-        EvaluatePath = Path
+        EvaluatePath = ConfigPath
     End If
 
     '// Resolve any parts of the path such as '..' and '.'
@@ -398,6 +413,7 @@ Private Function CollectionKeyExists(ByVal coll As Object, ByVal key As String) 
     On Error GoTo 0
 
 End Function
+
 
 Private Function HandleCrash(ByVal ErrNumber As Long, ByVal ErrDesc As String, ByVal ErrSource As String) As Boolean
 
