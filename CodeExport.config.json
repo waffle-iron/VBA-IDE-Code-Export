@@ -1,10 +1,12 @@
 {
 	"VBAProject Name": "CodeExport",
 	"Module Paths": {
+		"clsConfiguration": "clsConfiguration.cls",
 		"clsVBECmdHandler": "clsVBECmdHandler.cls",
 		"JsonConverter": "JsonConverter.bas",
 		"modImportExport": "modImportExport.bas",
-		"modMenu": "modMenu.bas"
+		"modMenu": "modMenu.bas",
+		"modUtil": "modUtil.bas"
 	},
 	"References": [
 		{
