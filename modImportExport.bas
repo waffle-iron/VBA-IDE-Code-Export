@@ -58,28 +58,30 @@ Public Sub MakeConfigFile()
                 boolDeleteModule = False
             End If
         End If
-        If Not boolDeleteModule Then
+        If boolDeleteModule Then
             collDeleteList.Add strModuleName
             strDeleteListStr = strDeleteListStr & strModuleName & vbNewLine
         End If
     Next varModuleName
 
-    intUserResponse = MsgBox( _
-        Prompt:= _
-            "There are some modules listed in the configuration file which " & _
-            "haven't been found in the current project. Would you like to " & _
-            "remove these modules from the configuration file?" & vbNewLine & _
-            vbNewLine & _
-            "Missing modules:" & vbNewLine & _
-            strDeleteListStr, _
-        Buttons:=vbYesNo + vbDefaultButton2, _
-        Title:="Missing Modules")
+    If collDeleteList.Count > 0 Then
+        intUserResponse = MsgBox( _
+            Prompt:= _
+                "There are some modules listed in the configuration file which " & _
+                "haven't been found in the current project. Would you like to " & _
+                "remove these modules from the configuration file?" & vbNewLine & _
+                vbNewLine & _
+                "Missing modules:" & vbNewLine & _
+                strDeleteListStr, _
+            Buttons:=vbYesNo + vbDefaultButton2, _
+            Title:="Missing Modules")
 
-    If intUserResponse = vbYes Then
-        For Each varModuleName In collDeleteList
-            strModuleName = varModuleName
-            Config.ModulePathRemove strModuleName
-        Next varModuleName
+        If intUserResponse = vbYes Then
+            For Each varModuleName In collDeleteList
+                strModuleName = varModuleName
+                Config.ModulePathRemove strModuleName
+            Next varModuleName
+        End If
     End If
 
     '// Generate entries for references in the current VBProject
@@ -92,29 +94,31 @@ Public Sub MakeConfigFile()
     '// Prompt if entries for missing references should be deleted
     Set collDeleteList = New Collection
     strDeleteListStr = ""
-    For lngIndex = 1 To Config.ReferencesCount Step -1
+    For lngIndex = Config.ReferencesCount To 1 Step -1
         If Not CollectionKeyExists(prjActProj.References, Config.ReferenceName(lngIndex)) Then
             collDeleteList.Add lngIndex
             strDeleteListStr = strDeleteListStr & Config.ReferenceName(lngIndex) & vbNewLine
         End If
     Next
 
-    intUserResponse = MsgBox( _
-        Prompt:= _
-            "There are some modules listed in the configuration file which " & _
-            "haven't been found in the current project. Would you like to " & _
-            "remove these modules from the configuration file?" & vbNewLine & _
-            vbNewLine & _
-            "Missing modules:" & vbNewLine & _
-            strDeleteListStr, _
-        Buttons:=vbYesNo + vbDefaultButton2, _
-        Title:="Missing Modules")
+    If collDeleteList.Count > 0 Then
+        intUserResponse = MsgBox( _
+            Prompt:= _
+                "There are some references listed in the configuration file which " & _
+                "haven't been found in the current project. Would you like to " & _
+                "remove these references from the configuration file?" & vbNewLine & _
+                vbNewLine & _
+                "Missing references:" & vbNewLine & _
+                strDeleteListStr, _
+            Buttons:=vbYesNo + vbDefaultButton2, _
+            Title:="Missing References")
 
-    If intUserResponse = vbYes Then
-        For Each varIndex In collDeleteList
-            lngIndex = varIndex
-            Config.ReferenceRemove lngIndex
-        Next varIndex
+        If intUserResponse = vbYes Then
+            For Each varIndex In collDeleteList
+                lngIndex = varIndex
+                Config.ReferenceRemove lngIndex
+            Next varIndex
+        End If
     End If
 
     '// Write changes to config file
