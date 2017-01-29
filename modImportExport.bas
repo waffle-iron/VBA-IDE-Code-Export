@@ -1,94 +1,138 @@
 Attribute VB_Name = "modImportExport"
 Option Explicit
 
-'// Add references for :
-'//     Microsoft Visual Basic For Applications Extensibility 5.3
-'//     Microsoft Scripting Runtime
-'// Also check the 'Trust access to the VBA project model check box', located...
-'// Trust Centre, Trust Centre Settings, Macro Settings, Trust access to the VBA project model
-
-Private Const STRCONFIGFILENAME         As String = "CodeExport.config.json"
-
-Private Const STR_CONFIGKEY_MODULEPATHS             As String = "Module Paths"
-Private Const STR_CONFIGKEY_REFERENCES              As String = "References"
-Private Const STR_CONFIGKEY_REFERENCE_NAME          As String = "Name"
-Private Const STR_CONFIGKEY_REFERENCE_DESCRIPTION   As String = "Description"
-Private Const STR_CONFIGKEY_REFERENCE_GUID          As String = "GUID"
-Private Const STR_CONFIGKEY_REFERENCE_MAJOR         As String = "Major"
-Private Const STR_CONFIGKEY_REFERENCE_MINOR         As String = "Minor"
-Private Const STR_CONFIGKEY_REFERENCE_PATH          As String = "Path"
-
-Private Const ForReading                As Integer = 1
-
-
+'// Updates the configuration file for the current active project.
+'// * Entries for modules not yet declared in the configuration file as created.
+'// * Modules listed in the configuration file which are not found are prompted
+'//   to be deleted from the configuration file.
+'// * The current loaded references are used to update the configuration file.
+'// * References in the configuration file whic hare not loaded are prompted to
+'//   be deleted from the configuration file.
 Public Sub MakeConfigFile()
 
     Dim prjActProj          As VBProject
-
-    Dim dictConfig          As Dictionary
-    Dim dictModulePaths     As Dictionary
-    Dim collReferences      As Collection
-    Dim dictReferenceConfig As Dictionary
+    Dim Config              As clsConfiguration
 
     Dim comModule           As VBComponent
-    Dim strFileExt          As String
+    Dim boolDeleteModule    As Boolean
+    Dim boolCreateNewEntry  As Boolean
+    Dim varModuleName       As Variant
+    Dim strModuleName       As String
+
     Dim refReference        As Reference
+    Dim lngIndex            As Long
+    Dim varIndex            As Variant
+    Dim boolForbiddenRef    As Boolean
+
+    Dim collDeleteList      As Collection
+    Dim strDeleteListStr    As String
+    Dim intUserResponse     As Integer
 
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
     If prjActProj Is Nothing Then GoTo exitSub
 
-    Set dictConfig = New Dictionary
+    Set Config = New clsConfiguration
+    Config.Project = prjActProj
+    Config.ReadFromProjectConfigFile
 
-    '// Collect the name of each module, form, etc.
-    Set dictModulePaths = New Dictionary
+    '// Generate entries for modules not yet listed
     For Each comModule In prjActProj.VBComponents
+        boolCreateNewEntry = _
+            ExportableModule(comModule) And _
+            Not Config.ModuleDeclared(comModule.Name)
 
-        strFileExt = vbNullString
-        Select Case comModule.Type
-            Case vbext_ct_StdModule
-                strFileExt = "bas"
-            Case vbext_ct_ClassModule, vbext_ct_Document
-                strFileExt = "cls"
-            Case vbext_ct_MSForm
-                strFileExt = "frm"
-        End Select
-
-        If Not strFileExt = vbNullString Then
-            If Not ModuleEmpty(comModule) Then
-                dictModulePaths.Add comModule.Name, comModule.Name & "." & strFileExt
-            End If
+        If boolCreateNewEntry Then
+            Config.ModulePath(comModule.Name) = comModule.Name & "." & FileExtension(comModule)
         End If
-
     Next comModule
-    dictConfig.Add STR_CONFIGKEY_MODULEPATHS, dictModulePaths
 
-    '// Collect the references
-    Set collReferences = New Collection
-    For Each refReference In prjActProj.References
-
-        If Not refReference.BuiltIn Then
-            Set dictReferenceConfig = New Dictionary
-            dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_NAME, refReference.Name
-            dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_DESCRIPTION, refReference.Description
-
-            If refReference.Type = vbext_rk_TypeLib Then
-                dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_GUID, refReference.GUID
-                dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_MAJOR, refReference.Major
-                dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_MINOR, refReference.Minor
-            Else
-                dictReferenceConfig.Add STR_CONFIGKEY_REFERENCE_PATH, refReference.FullPath
+    '// Ask user if they want to delete entries for missing modules
+    Set collDeleteList = New Collection
+    strDeleteListStr = ""
+    For Each varModuleName In Config.ModuleNames
+        strModuleName = varModuleName
+        boolDeleteModule = True
+        If CollectionKeyExists(prjActProj.VBComponents, strModuleName) Then
+            If ExportableModule(prjActProj.VBComponents(strModuleName)) Then
+                boolDeleteModule = False
             End If
-
-            collReferences.Add dictReferenceConfig
         End If
+        If boolDeleteModule Then
+            collDeleteList.Add strModuleName
+            strDeleteListStr = strDeleteListStr & strModuleName & vbNewLine
+        End If
+    Next varModuleName
 
+    If collDeleteList.Count > 0 Then
+        intUserResponse = MsgBox( _
+            Prompt:= _
+                "There are some modules listed in the configuration file which " & _
+                "haven't been found in the current project. Would you like to " & _
+                "remove these modules from the configuration file?" & vbNewLine & _
+                vbNewLine & _
+                "Missing modules:" & vbNewLine & _
+                strDeleteListStr, _
+            Buttons:=vbYesNo + vbDefaultButton2, _
+            Title:="Missing Modules")
+
+        If intUserResponse = vbYes Then
+            For Each varModuleName In collDeleteList
+                strModuleName = varModuleName
+                Config.ModulePathRemove strModuleName
+            Next varModuleName
+        End If
+    End If
+
+    '// Generate entries for references in the current VBProject
+    For Each refReference In prjActProj.References
+        If Not refReference.BuiltIn Then
+            boolForbiddenRef = _
+                refReference.Name = "stdole" Or _
+                refReference.Name = "Office"
+            If Not boolForbiddenRef Then
+                Config.ReferencesUpdateFromVBRef refReference
+            End If
+        End If
     Next refReference
-    dictConfig.Add STR_CONFIGKEY_REFERENCES, collReferences
 
-    '// Write config to JSON config file
-    WriteConfigFile prjActProj, dictConfig
+    '// Prompt if entries for missing references should be deleted
+    Set collDeleteList = New Collection
+    strDeleteListStr = ""
+    For lngIndex = Config.ReferencesCount To 1 Step -1
+        If Not CollectionKeyExists(prjActProj.References, Config.ReferenceName(lngIndex)) Then
+            collDeleteList.Add lngIndex
+            strDeleteListStr = strDeleteListStr & Config.ReferenceName(lngIndex) & vbNewLine
+        End If
+    Next
+
+    If collDeleteList.Count > 0 Then
+        intUserResponse = MsgBox( _
+            Prompt:= _
+                "There are some references listed in the configuration file which " & _
+                "haven't been found in the current project. Would you like to " & _
+                "remove these references from the configuration file?" & vbNewLine & _
+                vbNewLine & _
+                "Missing references:" & vbNewLine & _
+                strDeleteListStr, _
+            Buttons:=vbYesNo + vbDefaultButton2, _
+            Title:="Missing References")
+
+        If intUserResponse = vbYes Then
+            For Each varIndex In collDeleteList
+                lngIndex = varIndex
+                Config.ReferenceRemove lngIndex
+            Next varIndex
+        End If
+    End If
+
+    '// Write changes to config file
+    Config.WriteToProjectConfigFile
+
+    MsgBox _
+        "Configuration file was successfully updated. Please review the " & _
+        "file with a text editor."
 
 exitSub:
     Exit Sub
@@ -102,61 +146,54 @@ catchError:
 
 End Sub
 
-
+'// Exports code modules and cleans the current active VBProject as specified
+'// by the project's configuration file.
+'// * Any code module in the VBProject which is listed in the configuration
+'//   file is exported to the configured path.
+'// * code modules which were exported are deleted or cleared.
+'// * References loaded in the Project which are listed in the configuration
+'//   file is deleted.
 Public Sub Export()
 
     Dim prjActProj          As VBProject
-
-    Dim dictConfig          As Dictionary
-    Dim dictModulePaths     As Dictionary
-    Dim collConfigRefs      As Collection
-    Dim dictDeclaredRef     As Dictionary
-
-    Dim varModuleName       As Variant
-    Dim strModuleName       As String
-    Dim strModulePath       As String
+    Dim Config              As clsConfiguration
     Dim comModule           As VBComponent
+    Dim lngIndex            As Long
+    Dim strModuleName       As String
+    Dim varModuleName       As Variant
 
     On Error GoTo ErrHandler
 
     Set prjActProj = Application.VBE.ActiveVBProject
     If prjActProj Is Nothing Then GoTo exitSub
 
-    '// Read config file and parse it to construct the Config object.
-    Set dictConfig = ReadConfigFile(prjActProj)
+    Set Config = New clsConfiguration
+    Config.Project = prjActProj
+    Config.ReadFromProjectConfigFile
 
-    If dictConfig.Exists(STR_CONFIGKEY_MODULEPATHS) Then
-        '// Export each module listed in the module paths to it's designated location
-        Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
-        For Each varModuleName In dictModulePaths.Keys
-    
-            strModuleName = varModuleName
-            strModulePath = dictModulePaths(strModuleName)
-            strModulePath = EvaluatePath(prjActProj, strModulePath)
+    '// Export all modules listed in the configuration
+    For Each varModuleName In Config.ModuleNames
+        strModuleName = varModuleName
+        ' TODO Provide a warning if module listed in configuration is not found
+        If CollectionKeyExists(prjActProj.VBComponents, strModuleName) Then
             Set comModule = prjActProj.VBComponents(strModuleName)
-    
-            comModule.Export strModulePath
-    
+            EnsurePath Config.ModuleFullPath(strModuleName)
+            comModule.Export Config.ModuleFullPath(strModuleName)
+
             If comModule.Type = vbext_ct_Document Then
                 comModule.CodeModule.DeleteLines 1, comModule.CodeModule.CountOfLines
             Else
                 prjActProj.VBComponents.Remove comModule
             End If
-    
-        Next varModuleName
-    End If
+        End If
+    Next varModuleName
 
-    If dictConfig.Exists(STR_CONFIGKEY_REFERENCES) Then
-        '// For each reference listed in the config file, delete the references in the project
-        Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
-        For Each dictDeclaredRef In collConfigRefs
-    
-            If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
-                prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
-            End If
-    
-        Next dictDeclaredRef
-    End If
+    '// Remove all references listed
+    For lngIndex = 1 To Config.ReferencesCount
+        If CollectionKeyExists(prjActProj.References, Config.ReferenceName(lngIndex)) Then
+            prjActProj.References.Remove prjActProj.References(Config.ReferenceName(lngIndex))
+        End If
+    Next lngIndex
 
 exitSub:
     Exit Sub
@@ -170,59 +207,42 @@ ErrHandler:
 
 End Sub
 
-
+'// Imports textual data from the file system such as VBA code to build the
+'// current active VBProject as specified in it's configuration file.
+'// * Each code module file listed in the configuration file is imported into
+'//   the VBProject. Modules with the same name are overwritten.
+'// * All references declared in the configuration file are loaded into the
+'//   project.
+'// * The project name is set to the project name specified by the configuration
+'//   file.
 Public Sub Import()
 
     Dim prjActProj          As VBProject
-
-    Dim dictConfig          As Dictionary
-    Dim dictModulePaths     As Dictionary
-    Dim collConfigRefs      As Collection
-    Dim dictDeclaredRef     As Dictionary
-
-    Dim varModuleName       As Variant
+    Dim Config              As clsConfiguration
     Dim strModuleName       As String
-    Dim strModulePath       As String
+    Dim varModuleName       As Variant
 
     On Error GoTo catchError
 
     Set prjActProj = Application.VBE.ActiveVBProject
-    If Application.VBE.ActiveVBProject Is Nothing Then GoTo exitSub
+    If prjActProj Is Nothing Then GoTo exitSub
 
-    Set dictConfig = ReadConfigFile(prjActProj)
+    Set Config = New clsConfiguration
+    Config.Project = prjActProj
+    Config.ReadFromProjectConfigFile
 
-    If dictConfig.Exists(STR_CONFIGKEY_MODULEPATHS) Then
-        '// For each module path declared in the config file, import that module
-        '// overwritting any existing modules.
-        Set dictModulePaths = dictConfig(STR_CONFIGKEY_MODULEPATHS)
-        For Each varModuleName In dictModulePaths.Keys
+    '// Import code from listed module files
+    For Each varModuleName In Config.ModuleNames
+        strModuleName = varModuleName
+        ImportModule prjActProj, strModuleName, Config.ModuleFullPath(strModuleName)
+    Next varModuleName
 
-            strModuleName = varModuleName
-            strModulePath = EvaluatePath(prjActProj, dictModulePaths(strModuleName))
-            ImportModule prjActProj, strModuleName, strModulePath
+    '// Add references listed in the config file
+    Config.ReferencesAddToVBRefs prjActProj.References
 
-        Next varModuleName
-    End If
-
-    If dictConfig.Exists(STR_CONFIGKEY_REFERENCES) Then
-        '// Add each reference declared in the config file
-        Set collConfigRefs = dictConfig(STR_CONFIGKEY_REFERENCES)
-        For Each dictDeclaredRef In collConfigRefs
-
-            If CollectionKeyExists(prjActProj.References, dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME)) Then
-                prjActProj.References.Remove prjActProj.References(dictDeclaredRef(STR_CONFIGKEY_REFERENCE_NAME))
-            End If
-
-            If dictDeclaredRef.Exists(STR_CONFIGKEY_REFERENCE_GUID) Then
-                prjActProj.References.AddFromGuid _
-                    dictDeclaredRef(STR_CONFIGKEY_REFERENCE_GUID), _
-                    dictDeclaredRef(STR_CONFIGKEY_REFERENCE_MAJOR), _
-                    dictDeclaredRef(STR_CONFIGKEY_REFERENCE_MINOR)
-            Else
-                prjActProj.References.AddFromFile dictDeclaredRef(STR_CONFIGKEY_REFERENCE_PATH)
-            End If
-
-        Next dictDeclaredRef
+    '// Set the VBA Project name
+    If Config.VBAProjectNameDeclared Then
+        prjActProj.Name = Config.VBAProjectName
     End If
 
 exitSub:
@@ -239,7 +259,7 @@ End Sub
 
 
 '// Import a VBA code module... how hard could it be right?
-Private Sub ImportModule(ByVal Project As VBProject, ByVal ModuleName As String, ByVal ModulePath As String)
+Private Sub ImportModule(ByVal Project As VBProject, ByVal moduleName As String, ByVal ModulePath As String)
 
     Dim comNewImport        As VBComponent
     Dim comExistingComp     As VBComponent
@@ -247,10 +267,10 @@ Private Sub ImportModule(ByVal Project As VBProject, ByVal ModuleName As String,
     Dim modCodePaste        As CodeModule
 
     Set comNewImport = Project.VBComponents.Import(ModulePath)
-    If comNewImport.Name <> ModuleName Then
-        If CollectionKeyExists(Project.VBComponents, ModuleName) Then
+    If comNewImport.Name <> moduleName Then
+        If CollectionKeyExists(Project.VBComponents, moduleName) Then
 
-            Set comExistingComp = Project.VBComponents(ModuleName)
+            Set comExistingComp = Project.VBComponents(moduleName)
             If comExistingComp.Type = vbext_ct_Document Then
 
                 Set modCodeCopy = comNewImport.CodeModule
@@ -264,12 +284,12 @@ Private Sub ImportModule(ByVal Project As VBProject, ByVal ModuleName As String,
             Else
 
                 Project.VBComponents.Remove comExistingComp
-                comNewImport.Name = ModuleName
+                comNewImport.Name = moduleName
 
             End If
         Else
 
-            comNewImport.Name = ModuleName
+            comNewImport.Name = moduleName
 
         End If
     End If
@@ -277,6 +297,19 @@ Private Sub ImportModule(ByVal Project As VBProject, ByVal ModuleName As String,
 End Sub
 
 
+'// Is the given module exportable by this tool?
+Private Function ExportableModule(ByVal comModule As VBComponent) As Boolean
+
+    ExportableModule = _
+        (Not ModuleEmpty(comModule)) And _
+        (Not FileExtension(comModule) = vbNullString)
+
+End Function
+
+
+'// Check if a code module is effectively empty.
+'// effectively empty should be functionally and semantically equivelent to
+'// actually empty.
 Private Function ModuleEmpty(ByVal comModule As VBComponent) As Boolean
 
     Dim lngNumLines As Long
@@ -297,123 +330,40 @@ Private Function ModuleEmpty(ByVal comModule As VBComponent) As Boolean
 End Function
 
 
-'// Read an parse the config file for a project
-Private Function ReadConfigFile(ByVal Project As VBProject) As Dictionary
+'// The appropriate file extension for exporting the given module
+Private Function FileExtension(ByVal comModule As VBComponent) As String
 
-    Dim strConfigFilePath   As String
-    Dim tsConfigStream      As Scripting.TextStream
-    Dim strConfigJson       As String
-    Dim FSO                 As Scripting.FileSystemObject
-
-    Set FSO = New Scripting.FileSystemObject
-
-    strConfigFilePath = ConfigFilePath(Project)
-    If Not FSO.FileExists(strConfigFilePath) Then
-        MsgBox "You need to create file list config file before you can import or export files!"
-        Exit Function
-    End If
-    Set tsConfigStream = FSO.OpenTextFile(strConfigFilePath, ForReading)
-    strConfigJson = tsConfigStream.ReadAll()
-    tsConfigStream.Close
-    Set ReadConfigFile = JsonConverter.ParseJson(strConfigJson)
+    Select Case comModule.Type
+        Case vbext_ct_StdModule
+            FileExtension = "bas"
+        Case vbext_ct_ClassModule, vbext_ct_Document
+            FileExtension = "cls"
+        Case vbext_ct_MSForm
+            FileExtension = "frm"
+        Case Else
+            FileExtension = vbNullString
+    End Select
 
 End Function
 
 
-'// Write a configuration to the config file for a project
-Private Sub WriteConfigFile(ByVal Project As VBProject, ByVal Config As Dictionary)
+'// Ensure path to a file exists. Creates missing folders.
+Private Sub EnsurePath(ByVal Path As String)
 
-    Dim FSO                 As Scripting.FileSystemObject
-    Dim tsConfigStream      As Scripting.TextStream
-    Dim strConfigFilePath   As String
-    Dim strConfigJson       As String
+    Dim strParentPath As String
 
     Set FSO = New Scripting.FileSystemObject
+    strParentPath = FSO.GetParentFolderName(Path)
 
-    strConfigJson = JsonConverter.ConvertToJson(Config, vbTab)
-    strConfigFilePath = ConfigFilePath(Project)
-    Set tsConfigStream = FSO.CreateTextFile(strConfigFilePath, True)
-    tsConfigStream.Write strConfigJson
-    tsConfigStream.Close
+    If Not strParentPath = "" Then
+        EnsurePath strParentPath
+        If Not FSO.FolderExists(strParentPath) Then
+            If FSO.FileExists(strParentPath) Then
+                Err.Raise vbObjectError + 1, "modImportExport:EnsurePath", "A file exists where a folder needs to be: " & strParentPath
+            Else
+                FSO.CreateFolder (strParentPath)
+            End If
+        End If
+    End If
 
 End Sub
-
-
-'// Config file path for a given VBProject
-Private Function ConfigFilePath(ByVal Project As VBProject) As String
-
-    ConfigFilePath = ProjParentDirPath(Project) & STRCONFIGFILENAME
-
-End Function
-
-
-'// Parse a path name
-Private Function EvaluatePath(ByVal Project As VBProject, ByVal Path As String) As String
-
-    Dim FSO         As Scripting.FileSystemObject
-    Dim BaseDir     As String
-
-    Set FSO = New Scripting.FileSystemObject
-
-    '// Tack on the BaseDir if the Path is relative
-    BaseDir = SourceDirPath(Project)
-    If FSO.GetDriveName(Path) = vbNullString Then
-        '// Assume path is relative
-        EvaluatePath = FSO.BuildPath(BaseDir, Path)
-    Else
-        '// Assume path is absolute
-        EvaluatePath = Path
-    End If
-
-    '// Resolve any parts of the path such as '..' and '.'
-    EvaluatePath = FSO.GetAbsolutePathName(EvaluatePath)
-
-End Function
-
-
-'// Path of the VBA source directory for a given VBProject
-Private Function SourceDirPath(ByVal Project As VBProject) As String
-
-    SourceDirPath = ProjParentDirPath(Project)
-
-End Function
-
-
-'// The parent directory path for a given VBProject
-Private Function ProjParentDirPath(ByVal Project As VBProject) As String
-
-    Dim FSO As Scripting.FileSystemObject
-    Set FSO = New Scripting.FileSystemObject
-
-    ProjParentDirPath = FSO.GetParentFolderName(Project.Filename) & Application.PathSeparator
-
-End Function
-
-
-Private Function CollectionKeyExists(ByVal coll As Object, ByVal key As String) As Boolean
-
-    On Error Resume Next
-    coll (key)
-    CollectionKeyExists = (Err.Number = 0)
-    On Error GoTo 0
-
-End Function
-
-Private Function HandleCrash(ByVal ErrNumber As Long, ByVal ErrDesc As String, ByVal ErrSource As String) As Boolean
-
-    Dim UserAction As Integer
-
-    UserAction = MsgBox( _
-        Prompt:= _
-            "An unexpected problem occured. Please report this to " & _
-            "https://github.com/spences10/VBA-IDE-Code-Export/issues" & vbNewLine & vbNewLine & _
-            "Error Number: " & ErrNumber & vbNewLine & _
-            "Error Description: " & ErrDesc & vbNewLine & _
-            "Error Source: " & ErrSource & vbNewLine & vbNewLine & _
-            "Would you like to debug?", _
-        Buttons:=vbYesNo + vbDefaultButton2, _
-        Title:="Unexpected problem")
-
-    HandleCrash = UserAction = vbYes
-
-End Function

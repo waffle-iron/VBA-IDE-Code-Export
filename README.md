@@ -21,11 +21,13 @@ The add-in will create a menu in the VBA IDE (the VBE) called `Export for VCS`. 
 
 ### The configuration file
 
-A file named `CodeExport.config.json` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make Config File` button in the `Export For VCS` menu will generate a new configuration file for the current active project based upon the contents of that project. Any existing configuration file will be overwritten. The JSON file format is used as the file format for the configuration file.
+A file named `CodeExport.config.json` in the same directory as an Excel file declares what gets imported into that Excel file. The `Make Config File` button in the `Export For VCS` menu will create or update the configuration file for the current active project based upon the contents of that project. The JSON file format is used as the file format for the configuration file.
 
-The `Module Paths` property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file.
+The `Module Paths` property specifies a mapping of VBA modules to their location in the file system. File paths may be either relative or absolute. Relatives paths are relative to the directory of the configuration file and the Excel file. The `Base Path` property can be used to add a common prefix to all the file paths.
 
 The `References` property declares the references to libraries that your VBA modules require. These will be imported when the import action is used and will be removed when the export action is used.
+
+The `VBAProject Name` property declares the VBAProject name. This will be imported when the import action is used.
 
 ### Importing
 
@@ -33,6 +35,7 @@ The `Import` button in the `Export For VCS` menu will:
 
 * Import all the modules specified in the configuration file from the file system into the Excel file. Existing modules will be overwritten.
 * Add all library references declared in the configuration file. Existing library references will be overwritten.
+* Set the VBAProject name as declared in the configuration file.
 
 
 ### Exporting
