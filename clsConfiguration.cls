@@ -30,7 +30,7 @@ Private pConfig         As Dictionary
 Private Sub Class_Initialize()
 
     Set pConfig = New Dictionary
-    Set pProject = Null
+    Set pProject = Nothing
 
 End Sub
 
@@ -134,7 +134,7 @@ End Property
 
 '// List all the names of the modules which have been assigned a path in the
 '// configuration
-Public Property Get ModuleNames() As String()
+Public Property Get ModuleNames() As Variant()
 
     ModuleNames = ModulePathsDictReadOnly.Keys
 
@@ -159,7 +159,7 @@ End Property
 Public Property Get ModuleFullPath(ByVal moduleName As String) As String
 
     ModuleFullPath = FSO.BuildPath(BasePath, ModulePath(moduleName))
-    If FSO.GetDriveName(ProjectConfigPath) = vbNullString Then
+    If FSO.GetDriveName(ModuleFullPath) = vbNullString Then
         ModuleFullPath = FSO.BuildPath(ProjectDir, ModuleFullPath)
     End If
     ModuleFullPath = FSO.GetAbsolutePathName(ModuleFullPath)

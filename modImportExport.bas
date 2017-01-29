@@ -158,6 +158,7 @@ Public Sub Export()
     If prjActProj Is Nothing Then GoTo exitSub
 
     Set Config = New clsConfiguration
+    Config.Project = prjActProj
     Config.ReadFromProjectConfigFile
 
     '// Export all modules listed in the configuration
