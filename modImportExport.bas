@@ -22,6 +22,7 @@ Public Sub MakeConfigFile()
     Dim refReference        As Reference
     Dim lngIndex            As Long
     Dim varIndex            As Variant
+    Dim boolForbiddenRef    As Boolean
 
     Dim collDeleteList      As Collection
     Dim strDeleteListStr    As String
@@ -87,7 +88,12 @@ Public Sub MakeConfigFile()
     '// Generate entries for references in the current VBProject
     For Each refReference In prjActProj.References
         If Not refReference.BuiltIn Then
-            Config.ReferencesUpdateFromVBRef refReference
+            boolForbiddenRef = _
+                refReference.Name = "stdole" Or _
+                refReference.Name = "Office"
+            If Not boolForbiddenRef Then
+                Config.ReferencesUpdateFromVBRef refReference
+            End If
         End If
     Next refReference
 

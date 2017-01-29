@@ -396,6 +396,7 @@ Public Sub WriteToProjectConfigFile()
 
     '// Write JSON to file
     strConfigJson = JsonConverter.ConvertToJson(pConfig, vbTab)
+    strConfigJson = strConfigJson & vbNewLine
     Set tsConfigStream = FSO.CreateTextFile(ProjectConfigPath, True)
     tsConfigStream.Write strConfigJson
     tsConfigStream.Close
