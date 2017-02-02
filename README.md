@@ -2,9 +2,6 @@
 
 [![The MIT License](https://img.shields.io/badge/license-MIT-orange.svg?style=flat-square)](http://opensource.org/licenses/MIT)
 [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg?style=flat-square)](https://gitter.im/VBA-IDE-Code-Export)
-[![GitHub release](https://img.shields.io/github/release/qubyte/rubidium.svg?style=flat-square)](https://github.com/spences10/VBA-IDE-Code-Export)
-[![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed/cdnjs/cdnjs.svg?style=flat-square)](https://github.com/spences10/VBA-IDE-Code-Export/pulls?q=is%3Apr+is%3Aclosed)
-
 
 For a while now I have used this code so that all the associated VBA files used in a VBA project (*.cls, *.bas, *.frm files) can be easily exported for use with a Version Control System.
 
